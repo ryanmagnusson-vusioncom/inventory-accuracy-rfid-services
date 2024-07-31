@@ -1,0 +1,12 @@
+services:
+  oep-rfid-services:
+    container_name: oep-rfid-services
+    image: azul/zulu-openjdk-alpine:20-latest
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - mountPath: /application/config
+        name: application-properties
+      - mountPath: /application
+        name: wwwroot

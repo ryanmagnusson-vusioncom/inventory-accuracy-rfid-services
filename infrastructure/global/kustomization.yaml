@@ -1,0 +1,6 @@
+resources:
+  - traefik2.yaml
+  - container-azm-ms-agentconfig.yaml
+  - metrics-server.yaml
+  - tls.yaml
+  - traefik_services.yaml

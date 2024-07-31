@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.2.2</version>
+		<relativePath /> <!-- lookup parent from repository -->
+	</parent>
+
+	<groupId>io.vusion</groupId>
+	<artifactId>vusion-rfid-parent</artifactId>
+	<packaging>pom</packaging>
+	<version>1.0.0-SNAPSHOT</version>
+	<name>Vusion RFID Parent</name>
+	<description>Vusion RFID parent project</description>
+
+	<properties>
+	  <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	  <maven.compiler.source>17</maven.compiler.source>
+	  <maven.compiler.target>17</maven.compiler.target>
+	  <io.vusion.logging.version>1.0.2</io.vusion.logging.version>
+	  <io.vusion.azure.service.bus.version>2.1.2</io.vusion.azure.service.bus.version>
+	  <io.vusion.gson.version>1.0.7</io.vusion.gson.version>
+	  <jsoup.version>1.17.2</jsoup.version>
+	  <mapstruct.version>1.5.5.Final</mapstruct.version>
+      <lombok.version>1.18.32</lombok.version>
+	  <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
+	</properties>
+
+	<dependencies>
+
+
+	</dependencies>
+
+	<repositories>
+		<repository>
+			<id>azure-java-lib</id>
+			<url>https://vusion-vsts.pkgs.visualstudio.com/_packaging/azure-java-lib/maven/v1</url>
+			<releases>
+				<enabled>true</enabled>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.junit</groupId>
+				<artifactId>junit-bom</artifactId>
+				<version>5.9.1</version>
+				<scope>import</scope>
+				<type>pom</type>
+			</dependency>
+			<dependency>
+				<groupId>org.apache.commons</groupId>
+				<artifactId>commons-collections4</artifactId>
+				<version>4.4</version>
+			</dependency>
+
+			<!-- used for cleansing input/output -->
+			<dependency>
+				<groupId>org.jsoup</groupId>
+				<artifactId>jsoup</artifactId>
+				<version>${jsoup.version}</version>
+			</dependency>
+
+			<!-- enables validation of the #equals and #hashCode contracts -->
+			<dependency>
+				<groupId>nl.jqno.equalsverifier</groupId>
+				<artifactId>equalsverifier</artifactId>
+				<version>3.15.7</version>
+				<scope>test</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<modules>
+		<module>vusion-rfid-domain</module>
+		<module>vusion-rfid-services</module>
+		<module>vusion-rfid-data</module>
+	</modules>
+
+</project>

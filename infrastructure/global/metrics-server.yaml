@@ -1,0 +1,309 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    k8s-app: metrics-server
+    rbac.authorization.k8s.io/aggregate-to-admin: 'true'
+    rbac.authorization.k8s.io/aggregate-to-edit: 'true'
+    rbac.authorization.k8s.io/aggregate-to-view: 'true'
+  name: system:aggregated-metrics-reader
+rules:
+  - apiGroups:
+      - metrics.k8s.io
+    resources:
+      - pods
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: system:metrics-server
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - nodes/metrics
+    verbs:
+      - get
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server-auth-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server:system:auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: system:metrics-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:metrics-server
+subjects:
+  - kind: ServiceAccount
+    name: metrics-server
+    namespace: kube-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+spec:
+  ports:
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: https
+  selector:
+    k8s-app: metrics-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      k8s-app: metrics-server
+  template:
+    metadata:
+      name: metrics-server
+      labels:
+        k8s-app: metrics-server
+    spec:
+      volumes:
+        - name: tmp-dir
+          emptyDir: {}
+        - name: metrics-server-config-volume
+          configMap:
+            name: metrics-server-config
+            defaultMode: 420
+            optional: true
+      containers:
+        - name: metrics-server-vpa
+          image: mcr.microsoft.com/oss/kubernetes/autoscaler/addon-resizer:1.8.14
+          command:
+            - /pod_nanny
+            - '--config-dir=/etc/config'
+            - '--cpu=44m'
+            - '--extra-cpu=0.5m'
+            - '--memory=51Mi'
+            - '--extra-memory=4Mi'
+            - '--poll-period=180000'
+            - '--threshold=5'
+            - '--deployment=metrics-server'
+            - '--container=metrics-server'
+          env:
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+          resources:
+            limits:
+              cpu: 100m
+              memory: 300Mi
+            requests:
+              cpu: 5m
+              memory: 30Mi
+          volumeMounts:
+            - name: metrics-server-config-volume
+              mountPath: /etc/config
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+        - name: metrics-server
+          image: mcr.microsoft.com/oss/kubernetes/metrics-server:v0.6.1
+          command:
+            - /metrics-server
+            - '--kubelet-insecure-tls'
+            - '--kubelet-preferred-address-types=InternalIP'
+            - >-
+              --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+            - '--cert-dir=/tmp'
+            - '--secure-port=4443'
+          ports:
+            - name: ms-https
+              containerPort: 4443
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 46m
+              memory: 67Mi
+            requests:
+              cpu: 46m
+              memory: 67Mi
+          volumeMounts:
+            - name: tmp-dir
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: ms-https
+              scheme: HTTPS
+            initialDelaySeconds: 20
+            timeoutSeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: ms-https
+              scheme: HTTPS
+            initialDelaySeconds: 60
+            timeoutSeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      serviceAccountName: metrics-server
+      serviceAccount: metrics-server
+      securityContext: {}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.azure.com/cluster
+                    operator: Exists
+                  - key: type
+                    operator: NotIn
+                    values:
+                      - virtual-kubelet
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.azure.com/mode
+                    operator: In
+                    values:
+                      - system
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 10
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: k8s-app
+                      operator: In
+                      values:
+                        - metrics-server
+                topologyKey: topology.kubernetes.io/zone
+            - weight: 5
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: k8s-app
+                      operator: In
+                      values:
+                        - metrics-server
+                topologyKey: kubernetes.io/hostname
+      schedulerName: default-scheduler
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 30
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 30
+      priorityClassName: system-node-critical
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 600
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: v1beta1.metrics.k8s.io
+spec:
+  group: metrics.k8s.io
+  groupPriorityMinimum: 100
+  insecureSkipTLSVerify: true
+  service:
+    name: metrics-server
+    namespace: kube-system
+  version: v1beta1
+  versionPriority: 100

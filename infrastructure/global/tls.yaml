@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+type: kubernetes.io/tls
+kind: Secret
+metadata:
+  name: domain-tls
+  namespace: default
+data:
+  tls.crt: >-
+    __tls_crt__
+  tls.key: >-
+    __tls_key__
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  namespace: default
+spec:
+  defaultCertificate:
+    secretName: domain-tls

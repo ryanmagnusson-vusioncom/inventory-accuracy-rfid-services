@@ -1,0 +1,40 @@
+# To launch: 
+package spring-boot:run -Dskiptests -Dspring-boot.run.profiles=ela
+
+# To launch in debug mode: 
+package spring-boot:run -Dskiptests -Dspring-boot.run.profiles=ela  -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000"
+
+# Post images:
+POST http://localhost:8081/api/v1/stores/eric.store1/labels/pages?priority=HIGH&transmissionStrategy=ALWAYS&code=BLUKGDLIUHcjkbdkjfsmigsuerjJKL
+[{
+  "labelId": "03C7213AB696",
+  "retryStrategy":"ALWAYS",  
+  "extCorrelationId": "86B4C957-0F93-4433-9AF9-8A9E46F094E4",
+  "pages": [
+    {
+      "preload": false,
+      "page": 0,
+      "image": "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"
+    }
+]
+}]
+
+
+The code=xxxx comes from the "open.esl.api.key1" in the config
+
+
+# Post flashes:
+POST http://localhost:8081/api/v1/stores/eric.store1/labels/flash?code=BLUKGDLIUHcjkbdkjfsmigsuerjJKL
+[{
+        "type": "FLASH_LABEL",
+        "labelId": "03C7213AB696",
+        "color": "WHITE",
+        "duration": 30,
+        "pattern": "EACH_1_SECOND"
+}]
+
+
+# Post Stores
+POST http://localhost:8081/api/v3/stores/bison.msh001?code=BLUKGDLIUHcjkbdkjfsmigsuerjJKL
+
+

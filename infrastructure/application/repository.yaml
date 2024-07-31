@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: azure-storage-secret
+  namespace: __app_namespace__
+stringData:
+  azurestorageaccountkey: >-
+    __repositoryStorageKey__
+  azurestorageaccountname: __repositoryStorageName__

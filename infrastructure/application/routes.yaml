@@ -1,0 +1,18 @@
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ir-__app_namespace__-portal
+  namespace: __app_namespace__
+  annotations:
+    ingress.kubernetes.io/protocol: https
+spec:
+  entryPoints:
+    - portal
+  routes:
+    - match: Host(`__app_namespace__.__certDomain__`) && PathPrefix(`/`)
+      kind: Rule
+      services:
+        - name: oep-rfid
+          port: 80
+          scheme: http

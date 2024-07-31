@@ -1,0 +1,1825 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "comments": "Vtransmit V2 Platform",
+    "author": "SES Imagotag - R&D"
+  },
+  "parameters": {
+    "companyName": {
+      "type": "string",
+      "defaultValue": "ses"
+    },
+    "moduleTrigram": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 3
+    },
+    "moduleIndex": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "moduleName": {
+      "type": "string"
+    },
+    "envName": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 4
+    },
+    "primaryEnvName": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 4,
+      "defaultValue": "[parameters('envName')]",
+      "metadata": {
+        "description": "primary environment name, it should de defined for the secondary region"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "pairedLocation": {
+      "type": "string",
+      "defaultValue": "[parameters('location')]"
+    },
+    "enableSQL": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Boolean flag to turn on sql server and database"
+      }
+    },
+    "databaseAdministrator": {
+      "type": "string",
+      "defaultValue": "sesadmin"
+    },
+    "databaseAdminPassword": {
+      "type": "securestring"
+    },
+    "databaseApplicationUser": {
+      "type": "string",
+      "defaultValue": "ApplicationUser"
+    },
+    "databaseApplicationPassword": {
+      "type": "securestring",
+      "defaultValue": "[parameters('databaseAdminPassword')]"
+    },
+    "databaseSupportUser": {
+      "type": "string",
+      "defaultValue": "SupportL3User"
+    },
+    "databaseSupportPassword": {
+      "type": "securestring",
+      "defaultValue": "[parameters('databaseApplicationPassword')]"
+    },
+    "monitoringAlertingMails": {
+      "type": "array",
+      "defaultValue": ["cloud.monitoring@ses-imagotag.com"]
+    },
+    "databaseAADLogin": {
+      "type": "string",
+      "defaultValue": "brice.lelann@ses-imagotag.com"
+    },
+    "databaseAADObjectID": {
+      "type": "string",
+      "defaultValue": "2de43d14-de53-4acc-8ef0-5741046fca9b"
+    },
+    "databaseAADTenantId": {
+      "type": "string",
+      "defaultValue": "026f3f97-f463-4c41-ba74-bc156c3be494"
+    },
+    "primarySubscription": {
+      "type": "string",
+      "defaultValue": "[subscription().subscriptionId]"
+    },
+    "dataStorage": {
+      "type": "object",
+      "defaultValue": {
+        "tier": "Standard",
+        "name": "Standard_LRS"
+      }
+    },
+    "jobStorage": {
+      "type": "object",
+      "defaultValue": {
+        "tier": "Standard",
+        "name": "Standard_LRS"
+      }
+    },
+    "logSKU": {
+      "type": "string",
+      "defaultValue": "PerGB2018",
+      "allowedValues": ["Standard", "Premium", "Unlimited", "PerNode", "PerGB2018", "Standalone"]
+    },
+    "allowedSupportIps": {
+      "type": "array",
+      "defaultValue": []
+    },
+    "osDiskSizeGB": {
+      "type": "int",
+      "defaultValue": 256,
+      "metadata": {
+        "description": "Disk size (in GiB) to provision for each of the agent pool nodes. This value ranges from 0 to 1023. Specifying 0 will apply the default disk size for that agentVMSize."
+      },
+      "minValue": 0,
+      "maxValue": 1023
+    },
+    "kubernetesVersion": {
+      "type": "string",
+      "defaultValue": "1.27.7",
+      "metadata": {
+        "description": "The version of Kubernetes."
+      }
+    },
+    "nodePoolVmSize": {
+      "type": "string",
+      "defaultValue": "Standard_D2s_v3",
+      "metadata": {
+        "description": "AKS VMSS node pool VM size."
+      }
+    },
+    "aksNodeCount": {
+      "type": "int",
+      "defaultValue": 1,
+      "metadata": {
+        "description": "AKS VMSS init node count for jobs"
+      },
+      "minValue": 1,
+      "maxValue": 100
+    },
+    "frontServiceBusSKUName": {
+      "type": "string",
+      "defaultValue": "Standard",
+      "allowedValues": ["Standard", "Premium"]
+    },
+    "backendServiceBusSKUName": {
+      "type": "string",
+      "defaultValue": "Standard",
+      "allowedValues": ["Standard", "Premium"]
+    },
+    "enableSLA": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "dailyQuotaGb": {
+      "type": "int",
+      "defaultValue": 1
+    },
+    "databaseSkuTier": {
+      "type": "string",
+      "allowedValues": ["Basic", "Standard", "Premium", "GeneralPurpose"],
+      "defaultValue": "GeneralPurpose"
+    },
+    "primaryDatabaseCapacity": {
+      "type": "int",
+      "defaultValue": "[if(equals('GeneralPurpose', parameters('databaseSkuTier')), 2, 10 )]"
+    },
+    "secondaryDatabaseCapacity": {
+      "type": "int",
+      "defaultValue": "[if(equals('GeneralPurpose', parameters('databaseSkuTier')), 1, 10 )]"
+    },
+    "databaseMaxSize": {
+      "defaultValue": "53687091200",
+      "type": "string",
+      "allowedValues": [
+        "104857600",
+        "524288000",
+        "1073741824",
+        "2147483648",
+        "5368709120",
+        "10737418240",
+        "21474836480",
+        "32212254720",
+        "42949672960",
+        "53687091200",
+        "107374182400",
+        "161061273600",
+        "214748364800",
+        "268435456000",
+        "322122547200",
+        "429496729600",
+        "536870912000",
+        "1073741824000"
+      ],
+      "metadata": {
+        "description": "DB Max Size, in bytes"
+      }
+    },
+    "searchEnvName": {
+      "type": "string",
+      "defaultValue": "[parameters('primaryEnvName')]"
+    },
+    "searchbus": {
+      "type": "string"
+    },
+    "searchSecondarybus": {
+      "type": "string"
+    },
+    "searchTrigram": {
+      "type": "string",
+      "defaultValue": "sch2"
+    },
+    "maxDeliveryCount": {
+      "type": "int",
+      "defaultValue": 5
+    },
+    "apiKey1": {
+      "type": "securestring"
+    },
+    "apiKey2": {
+      "type": "securestring"
+    },
+    "redisPassword": {
+      "type": "securestring"
+    },
+    "redisSysPassword": {
+      "type": "securestring"
+    }
+  },
+  "variables": {
+    "isPrimaryRegion": "[equals(parameters('primaryEnvName'), parameters('envName'))]",
+    "needDatabase": "[and(variables('isPrimaryRegion'), parameters('enableSQL'))]",
+
+    "namespace": "[format('{0}{1}{2}{3}', parameters('companyName'), parameters('moduleTrigram'), parameters('envName'), parameters('moduleIndex'))]",
+    "resourceGroupName": "[format('{0}-{1}', variables('namespace'), parameters('moduleName'))]",
+
+    "primaryNamespace": "[format('{0}{1}{2}{3}', parameters('companyName'), parameters('moduleTrigram'), parameters('primaryEnvName'), parameters('moduleIndex'))]",
+    "primaryResourceGroup": "[format('{0}-{1}', variables('primaryNamespace'), parameters('moduleName'))]",
+
+    "dataStorageName": "[format('{0}{1}', variables('namespace'), 'datas')]",
+    "logsStorageName": "[format('{0}{1}', variables('namespace'), 'logs')]",
+    "farepository": "farepository",
+    "jobStorageName": "[format('{0}{1}', variables('namespace'), 'jobs')]",
+    "tasksStorageName": "[format('{0}{1}', variables('namespace'), 'tasks')]",
+
+    "logWorkspaceName": "[format('{0}-{1}', variables('namespace'), 'log')]",
+    "logWorkspaceId": "[resourceId(variables('resourceGroupName'), 'Microsoft.OperationalInsights/workspaces', variables('logWorkspaceName'))]",
+    "insightName": "[format('{0}-{1}', variables('namespace'), 'insight')]",
+
+    "aksClusterName": "[format('{0}{1}', variables('namespace'), 'aks')]",
+    "aksnamespace": "[format('{0}{1}',variables('namespace'),variables('aksClusterName'))]",
+
+    "dnsPrefix": "[format('{0}-{1}',variables('aksnamespace'),'dns')]",
+    "aksClusterSku": "[if(parameters('enableSLA'), 'Paid', 'Free')]",
+    "jobsPoolName": "jobs",
+
+    "primaryDatabaseServerName": "[format('{0}-{1}-{2}', variables('primaryNamespace'), 'db','primary')]",
+    "secondaryDatabaseServerName": "[format('{0}-{1}-{2}', variables('primaryNamespace'), 'db','secondary')]",
+    "databaseSkuName": "[if(equals('GeneralPurpose', parameters('databaseSkuTier')), 'GP_S_Gen5', parameters('databaseSkuTier'))]",
+    "databaseFamily": "[if(equals('GeneralPurpose', parameters('databaseSkuTier')), 'Gen5', '' )]",
+    "databaseKind": "[if(empty(variables('databaseFamily')), 'v12.0,user', 'v12.0,user,vcore,serverless')]",
+    "databaseName": "[format('openesldb{0}', parameters('moduleIndex'))]",
+    "databaseFailoverGroupName": "[format('{0}-{1}-fog', variables('namespace'), variables('databaseName'))]",
+
+    "keyVaultName": "[format('{0}{1}', variables('namespace'), 'kv')]",
+
+    "frontBus": "[format('{0}{1}', variables('primaryNamespace'), '-sb-front')]",
+    "backendBus": "[format('{0}{1}', variables('primaryNamespace'), '-sb-backend')]",
+    "servicebusAuthorization": "RootManageSharedAccessKey",
+    "isPremimumBackendServicebus": "[equals(parameters('backendServiceBusSKUName'),'Premium')]",
+    "topicSize": "[if(variables('isPremimumBackendServicebus'),81920,5120)]",
+
+    "searchAuthorization": "RootManageSharedAccessKey",
+    "searchResourceGroup": "[format('{0}{1}{2}-search', parameters('companyName'), parameters('searchTrigram'), parameters('searchEnvName'))]",
+    "primarySearchServiceBusId": "[resourceId(parameters('primarySubscription'), variables('searchResourceGroup'), 'Microsoft.ServiceBus/namespaces/AuthorizationRules', parameters('searchBus'), variables('searchAuthorization'))]",
+    "secondarySearchServiceBusId": "[resourceId(parameters('primarySubscription'), concat(variables('searchResourceGroup')), 'Microsoft.ServiceBus/namespaces/AuthorizationRules', parameters('searchSecondaryBus'), variables('searchAuthorization'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "[policies.storage().apiVersion]",
+      "name": "[variables('dataStorageName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('dataStorage').name]",
+        "tier": "[parameters('dataStorage').tier]"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "dnsEndpointType": "Standard",
+        "defaultToOAuthAuthentication": false,
+        "publicNetworkAccess": "Enabled",
+        "allowCrossTenantReplication": false,
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": true,
+        "networkAcls": {},
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "requireInfrastructureEncryption": false,
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      },
+      "resources": [
+        {
+          "type": "Microsoft.Storage/storageAccounts/blobServices",
+          "apiVersion": "[policies.storage().apiVersion]",
+          "name": "[concat(variables('dataStorageName'), '/default')]",
+          "dependsOn": ["[resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageName'))]"],
+          "properties": {
+            "deleteRetentionPolicy": {
+              "allowPermanentDelete": false,
+              "enabled": false
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "[policies.storage().apiVersion]",
+
+              "name": "[concat(variables('dataStorageName'), '/default/data')]",
+              "dependsOn": ["[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('dataStorageName'), 'default')]"],
+              "properties": {
+                "immutableStorageWithVersioning": {
+                  "enabled": false
+                },
+                "defaultEncryptionScope": "$account-encryption-key",
+                "denyEncryptionScopeOverride": false,
+                "publicAccess": "None"
+              }
+            }
+          ]
+        },
+        {
+          "type": "Microsoft.Storage/storageAccounts/fileServices",
+          "apiVersion": "[policies.storage().apiVersion]",
+
+          "name": "[concat(variables('dataStorageName'), '/default')]",
+          "dependsOn": ["[resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageName'))]"],
+          "properties": {
+            "shareDeleteRetentionPolicy": {
+              "enabled": "[policies.storage().deleteRetentionPolicy.enabled]",
+              "days": "[policies.storage().deleteRetentionPolicy.days]"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
+              "apiVersion": "[policies.storage().apiVersion]",
+              "name": "[concat(variables('dataStorageName'), '/default/',  variables('farepository'))]",
+              "dependsOn": ["[resourceId('Microsoft.Storage/storageAccounts/fileServices', variables('dataStorageName'), 'default')]"],
+              "properties": {
+                "accessTier": "TransactionOptimized",
+                "shareQuota": 5120,
+                "enabledProtocols": "SMB"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "[policies.storage().apiVersion]",
+      "name": "[variables('tasksStorageName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('dataStorage').name]",
+        "tier": "[parameters('dataStorage').tier]"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "dnsEndpointType": "Standard",
+        "defaultToOAuthAuthentication": false,
+        "publicNetworkAccess": "Enabled",
+        "allowCrossTenantReplication": false,
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": true,
+        "networkAcls": {},
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "requireInfrastructureEncryption": false,
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      },
+      "resources": [
+        {
+          "type": "Microsoft.Storage/storageAccounts/blobServices",
+          "apiVersion": "[policies.storage().apiVersion]",
+          "name": "[concat(variables('tasksStorageName'), '/default')]",
+          "dependsOn": ["[resourceId('Microsoft.Storage/storageAccounts', variables('tasksStorageName'))]"],
+          "properties": {
+            "deleteRetentionPolicy": {
+              "allowPermanentDelete": false,
+              "enabled": false
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "[policies.storage().apiVersion]",
+
+              "name": "[concat(variables('tasksStorageName'), '/default/data')]",
+              "dependsOn": ["[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('tasksStorageName'), 'default')]"],
+              "properties": {
+                "immutableStorageWithVersioning": {
+                  "enabled": false
+                },
+                "defaultEncryptionScope": "$account-encryption-key",
+                "denyEncryptionScopeOverride": false,
+                "publicAccess": "None"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "[policies.storage().apiVersion]",
+      "name": "[variables('logsStorageName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('dataStorage').name]",
+        "tier": "[parameters('dataStorage').tier]"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "dnsEndpointType": "Standard",
+        "defaultToOAuthAuthentication": false,
+        "publicNetworkAccess": "Enabled",
+        "allowCrossTenantReplication": false,
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": true,
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow"
+        },
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "requireInfrastructureEncryption": false,
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "[policies.storage().apiVersion]",
+      "name": "[variables('jobStorageName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('jobStorage').name]",
+        "tier": "[parameters('jobStorage').tier]"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "dnsEndpointType": "Standard",
+        "defaultToOAuthAuthentication": false,
+        "publicNetworkAccess": "Enabled",
+        "allowCrossTenantReplication": false,
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false,
+        "allowSharedKeyAccess": true,
+        "networkAcls": {},
+        "supportsHttpsTrafficOnly": true,
+        "encryption": {
+          "requireInfrastructureEncryption": false,
+          "services": {
+            "file": {
+              "keyType": "Account",
+              "enabled": true
+            },
+            "blob": {
+              "keyType": "Account",
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "accessTier": "Hot"
+      },
+      "resources": [
+        {
+          "type": "Microsoft.Storage/storageAccounts/blobServices",
+          "apiVersion": "[policies.storage().apiVersion]",
+          "name": "[concat(variables('jobStorageName'), '/default')]",
+          "dependsOn": ["[resourceId('Microsoft.Storage/storageAccounts', variables('jobStorageName'))]"],
+          "properties": {
+            "deleteRetentionPolicy": {
+              "allowPermanentDelete": false,
+              "enabled": false
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "[policies.storage().apiVersion]",
+              "name": "[concat(variables('jobStorageName'), '/default/scm-releases')]",
+              "dependsOn": ["[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('jobStorageName'), 'default')]"],
+              "properties": {
+                "immutableStorageWithVersioning": {
+                  "enabled": false
+                },
+                "defaultEncryptionScope": "$account-encryption-key",
+                "denyEncryptionScopeOverride": false,
+                "publicAccess": "None"
+              }
+            }
+          ]
+        },
+        {
+          "type": "Microsoft.Storage/storageAccounts/fileServices",
+          "apiVersion": "[policies.storage().apiVersion]",
+          "name": "[concat(variables('jobStorageName'), '/default')]",
+          "dependsOn": ["[resourceId('Microsoft.Storage/storageAccounts', variables('jobStorageName'))]"],
+          "properties": {
+            "shareDeleteRetentionPolicy": {
+              "enabled": true,
+              "days": 7
+            }
+          },
+          "resources": []
+        }
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "[policies.keyVault().apiVersion]",
+      "name": "[concat(variables('keyVaultName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "enabledForDeployment": "[policies.keyVault().enabledForDeployment]",
+        "enabledForTemplateDeployment": "[policies.keyVault().enabledForTemplateDeployment]",
+        "enabledForDiskEncryption": "[policies.keyVault().enabledForDiskEncryption]",
+        "createMode": "default",
+        "tenantId": "[subscription().tenantId]",
+        "sku": {
+          "name": "[policies.keyVault().keyVaultSku]",
+          "family": "A"
+        },
+        "networkAcls": {
+          "bypass": "AzureServices",
+          "defaultAction": "Allow",
+          "ipRules": [],
+          "virtualNetworkRules": []
+        },
+        "enableSoftDelete": true,
+        "enablePurgeProtection": true,
+        "softDeleteRetentionInDays": "[policies.keyVault().softDeleteRetentionInDays]",
+        "accessPolicies": []
+      },
+      "resources": [
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().redisSysPassword)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[parameters('redisSysPassword')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().redisPassword)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[parameters('redisPassword')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "condition": "[variables('needDatabase')]",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().adminLogin)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[parameters('databaseAdministrator')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "condition": "[variables('needDatabase')]",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().adminPassword)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[parameters('databaseAdminPassword')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "condition": "[variables('needDatabase')]",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().applicationLogin)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[parameters('databaseApplicationUser')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "condition": "[variables('needDatabase')]",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().applicationPassword)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[parameters('databaseApplicationPassword')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "condition": "[variables('needDatabase')]",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().supportLogin)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[parameters('databaseSupportUser')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "condition": "[variables('needDatabase')]",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().supportPassword)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[parameters('databaseSupportPassword')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().primarySearchbusConnectionSecret)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[listKeys(variables('primarySearchServiceBusId'), policies.servicebus().apiVersion).primaryConnectionString]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().secondarySearchConnectionSecret)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[listKeys(variables('secondarySearchServiceBusId'), policies.servicebus().apiVersion).primaryConnectionString]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().frontServicebusConnectionSecret)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[listKeys(resourceId(variables('primaryResourceGroup'), 'Microsoft.ServiceBus/namespaces/AuthorizationRules', variables('frontBus'), variables('servicebusAuthorization')), policies.servicebus().apiVersion).primaryConnectionString]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().backendServicebusConnectionSecret)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[listKeys(resourceId(variables('primaryResourceGroup'), 'Microsoft.ServiceBus/namespaces/AuthorizationRules', variables('backendBus'), variables('servicebusAuthorization')), policies.servicebus().apiVersion).primaryConnectionString]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "condition": "[variables('needDatabase')]",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().firewallAllowedIps)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[join(parameters('allowedSupportIps'), ',')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().moduleApiKey1)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[parameters('apiKey1')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        },
+        {
+          "type": "Microsoft.KeyVault/vaults/secrets",
+          "name": "[concat(variables('keyVaultName'), '/', policies.keyVault().moduleApiKey2)]",
+          "apiVersion": "[policies.keyVault().apiVersion]",
+          "properties": {
+            "value": "[parameters('apiKey2')]"
+          },
+          "dependsOn": ["[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"]
+        }
+      ]
+    },
+    {
+      "type": "microsoft.OperationalInsights/workspaces",
+      "apiVersion": "[policies.log().apiVersion]",
+      "name": "[variables('logWorkspaceName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "[parameters('logSKU')]"
+        },
+        "retentionInDays": "[policies.log().retentionInDays]",
+        "features": {
+          "enableLogAccessUsingOnlyResourcePermissions": true
+        },
+        "workspaceCapping": {
+          "dailyQuotaGb": "[parameters('dailyQuotaGb')]"
+        },
+        "publicNetworkAccessForIngestion": "Enabled",
+        "publicNetworkAccessForQuery": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "[policies.insight().apiVersion]",
+      "name": "[variables('insightName')]",
+      "dependsOn": ["[resourceId('microsoft.OperationalInsights/workspaces', variables('logWorkspaceName'))]"],
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "Flow_Type": "Redfield",
+        "Request_Source": "IbizaWebAppExtensionCreate",
+        "RetentionInDays": "[policies.insight().RetentionInDays]",
+        "WorkspaceResourceId": "[variables('logWorkspaceId')]",
+        "IngestionMode": "LogAnalytics",
+        "publicNetworkAccessForIngestion": "Enabled",
+        "publicNetworkAccessForQuery": "Enabled"
+      }
+    },
+    {
+      "condition": "[variables('needDatabase')]",
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "[policies.sqlDatabase().apiVersion]",
+      "location": "[parameters('location')]",
+      "name": "[variables('primaryDatabaseServerName')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "administratorLogin": "[parameters('databaseAdministrator')]",
+        "administratorLoginPassword": "[parameters('databaseAdminPassword')]",
+        "version": "[policies.sqlDatabase().softVersion]"
+      },
+      "resources": [
+        {
+          "condition": "[variables('needDatabase')]",
+          "type": "firewallrules",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "name": "AllowAllWindowsAzureIps",
+          "dependsOn": ["[resourceId('Microsoft.Sql/servers/', variables('primaryDatabaseServerName'))]"],
+          "properties": {
+            "endIpAddress": "0.0.0.0",
+            "startIpAddress": "0.0.0.0"
+          }
+        },
+        {
+          "condition": "[variables('needDatabase')]",
+          "type": "securityAlertPolicies",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "name": "Default",
+          "dependsOn": ["[resourceId('Microsoft.Sql/servers/', variables('primaryDatabaseServerName'))]"],
+          "properties": {
+            "state": "Enabled",
+            "emailAddresses": "[parameters('monitoringAlertingMails')]",
+            "emailAccountAdmins": true
+          }
+        },
+        {
+          "condition": "[variables('needDatabase')]",
+          "type": "auditingSettings",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "name": "Default",
+          "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName'))]",
+            "[resourceId('Microsoft.Sql/servers/', variables('primaryDatabaseServerName'))]"
+          ],
+          "properties": {
+            "retentionDays": "[policies.log().retentionInDays]",
+            "auditActionsAndGroups": [
+              "SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP",
+              "FAILED_DATABASE_AUTHENTICATION_GROUP",
+              "BATCH_COMPLETED_GROUP"
+            ],
+            "isStorageSecondaryKeyInUse": false,
+            "isAzureMonitorTargetEnabled": false,
+            "state": "Enabled",
+            "storageAccountAccessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).keys[0].value]",
+            "storageEndpoint": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).primaryEndpoints.blob]",
+            "storageAccountSubscriptionId": "[subscription().subscriptionId]"
+          }
+        },
+        {
+          "condition": "[variables('needDatabase')]",
+          "type": "extendedAuditingSettings",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "name": "Default",
+          "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName'))]",
+            "[resourceId('Microsoft.Sql/servers/', variables('primaryDatabaseServerName'))]"
+          ],
+          "properties": {
+            "retentionDays": 0,
+            "auditActionsAndGroups": [
+              "SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP",
+              "FAILED_DATABASE_AUTHENTICATION_GROUP",
+              "BATCH_COMPLETED_GROUP"
+            ],
+            "isStorageSecondaryKeyInUse": false,
+            "isAzureMonitorTargetEnabled": false,
+            "state": "Enabled",
+            "storageAccountAccessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).keys[0].value]",
+            "storageEndpoint": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).primaryEndpoints.blob]",
+            "storageAccountSubscriptionId": "[subscription().subscriptionId]"
+          }
+        },
+        {
+          "condition": "[variables('needDatabase')]",
+          "type": "administrators",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "name": "activeDirectory",
+          "dependsOn": ["[resourceId('Microsoft.Sql/servers', variables('primaryDatabaseServerName'))]"],
+          "properties": {
+            "administratorType": "ActiveDirectory",
+            "login": "[parameters('databaseAADLogin')]",
+            "sid": "[parameters('databaseAADObjectID')]",
+            "tenantId": "[parameters('databaseAADTenantId')]"
+          }
+        }
+      ]
+    },
+    {
+      "condition": "[and(variables('needDatabase'), greater(length(parameters('allowedSupportIps')), 0))]",
+      "type": "Microsoft.Sql/servers/firewallrules",
+      "apiVersion": "[policies.sqlDatabase().apiVersion]",
+      "name": "[format('{0}/AllowSupportIp{1}', variables('primaryDatabaseServerName'), copyIndex())]",
+      "dependsOn": ["[resourceId('Microsoft.Sql/servers', variables('primaryDatabaseServerName'))]"],
+      "properties": {
+        "startIpAddress": "[parameters('allowedSupportIps')[copyIndex()]]",
+        "endIpAddress": "[parameters('allowedSupportIps')[copyIndex()]]"
+      },
+      "copy": {
+        "name": "allowIpSqlLoop",
+        "count": "[length(parameters('allowedSupportIps'))]"
+      }
+    },
+    {
+      "condition": "[variables('needDatabase')]",
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "[policies.sqlDatabase().apiVersion]",
+      "location": "[parameters('pairedLocation')]",
+      "name": "[variables('secondaryDatabaseServerName')]",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "administratorLogin": "[parameters('databaseAdministrator')]",
+        "administratorLoginPassword": "[parameters('databaseAdminPassword')]",
+        "version": "[policies.sqlDatabase().softVersion]"
+      },
+      "resources": [
+        {
+          "condition": "[variables('needDatabase')]",
+          "type": "firewallrules",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "name": "AllowAllWindowsAzureIps",
+          "dependsOn": ["[resourceId('Microsoft.Sql/servers', variables('secondaryDatabaseServerName'))]"],
+          "properties": {
+            "endIpAddress": "0.0.0.0",
+            "startIpAddress": "0.0.0.0"
+          }
+        },
+        {
+          "condition": "[variables('needDatabase')]",
+          "type": "securityAlertPolicies",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "name": "Default",
+          "dependsOn": ["[resourceId('Microsoft.Sql/servers', variables('secondaryDatabaseServerName'))]"],
+          "properties": {
+            "state": "Enabled",
+            "emailAddresses": "[parameters('monitoringAlertingMails')]",
+            "emailAccountAdmins": true
+          }
+        },
+        {
+          "condition": "[variables('needDatabase')]",
+          "type": "auditingSettings",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "name": "Default",
+          "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName'))]",
+            "[resourceId('Microsoft.Sql/servers/', variables('secondaryDatabaseServerName'))]"
+          ],
+          "properties": {
+            "retentionDays": 0,
+            "auditActionsAndGroups": [
+              "SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP",
+              "FAILED_DATABASE_AUTHENTICATION_GROUP",
+              "BATCH_COMPLETED_GROUP"
+            ],
+            "isStorageSecondaryKeyInUse": false,
+            "isAzureMonitorTargetEnabled": false,
+            "state": "Disabled",
+            "storageAccountAccessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).keys[0].value]",
+            "storageEndpoint": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).primaryEndpoints.blob]",
+            "storageAccountSubscriptionId": "[subscription().subscriptionId]"
+          }
+        },
+        {
+          "condition": "[variables('needDatabase')]",
+          "type": "extendedAuditingSettings",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "name": "Default",
+          "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName'))]",
+            "[resourceId('Microsoft.Sql/servers/', variables('secondaryDatabaseServerName'))]"
+          ],
+          "properties": {
+            "retentionDays": 0,
+            "auditActionsAndGroups": [
+              "SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP",
+              "FAILED_DATABASE_AUTHENTICATION_GROUP",
+              "BATCH_COMPLETED_GROUP"
+            ],
+            "isStorageSecondaryKeyInUse": false,
+            "isAzureMonitorTargetEnabled": false,
+            "state": "Disabled",
+            "storageAccountAccessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).keys[0].value]",
+            "storageEndpoint": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).primaryEndpoints.blob]",
+            "storageAccountSubscriptionId": "[subscription().subscriptionId]"
+          }
+        },
+        {
+          "condition": "[variables('needDatabase')]",
+          "type": "administrators",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "name": "activeDirectory",
+          "dependsOn": ["[resourceId('Microsoft.Sql/servers', variables('secondaryDatabaseServerName'))]"],
+          "properties": {
+            "administratorType": "ActiveDirectory",
+            "login": "[parameters('databaseAADLogin')]",
+            "sid": "[parameters('databaseAADObjectID')]",
+            "tenantId": "[parameters('databaseAADTenantId')]"
+          }
+        }
+      ]
+    },
+    {
+      "condition": "[and(variables('needDatabase'), greater(length(parameters('allowedSupportIps')), 0))]",
+      "type": "Microsoft.Sql/servers/firewallrules",
+      "apiVersion": "[policies.sqlDatabase().apiVersion]",
+      "name": "[format('{0}/AllowSupportIp{1}', variables('secondaryDatabaseServerName'), copyIndex())]",
+      "dependsOn": ["[resourceId('Microsoft.Sql/servers/', variables('secondaryDatabaseServerName'))]"],
+      "properties": {
+        "startIpAddress": "[parameters('allowedSupportIps')[copyIndex()]]",
+        "endIpAddress": "[parameters('allowedSupportIps')[copyIndex()]]"
+      },
+      "copy": {
+        "name": "allowIpSqlLoop",
+        "count": "[length(parameters('allowedSupportIps'))]"
+      }
+    },
+    {
+      "apiVersion": "[policies.containerService().apiVersion]",
+      "type": "Microsoft.ContainerService/managedClusters",
+      "location": "[parameters('location')]",
+      "name": "[variables('aksClusterName')]",
+      "sku": {
+        "name": "Basic",
+        "tier": "[variables('aksClusterSku')]"
+      },
+      "properties": {
+        "kubernetesVersion": "[parameters('kubernetesVersion')]",
+        "enableRBAC": "[policies.containerService().enableRBAC]",
+        "dnsPrefix": "[variables('dnsPrefix')]",
+        "nodeResourceGroup": "[format('{0}-nodes', variables('resourceGroupName'))]",
+        "agentPoolProfiles": [
+          {
+            "name": "[variables('jobsPoolName')]",
+            "osDiskSizeGB": "[parameters('osDiskSizeGB')]",
+            "count": "[parameters('aksNodeCount')]",
+            "vmSize": "[parameters('nodePoolVmSize')]",
+            "osType": "[policies.containerService().osType]",
+            "osDiskType": "Managed",
+            "storageProfile": "ManagedDisks",
+            "type": "VirtualMachineScaleSets",
+            "mode": "System",
+            "maxPods": "[policies.containerService().maxPods]",
+            "enableAutoScaling": "[policies.containerService().enableAutoScaling]",
+            "nodeLabels": {
+              "nodetype": "function"
+            },
+            "orchestratorVersion": "[parameters('kubernetesVersion')]",
+            "enableFIPS": false,
+            "scaleDownMode": "Deallocate",
+            "maxCount": "[if(policies.containerService().enableAutoScaling, policies.containerService().maxFuncPoolNodes, json('null'))]",
+            "minCount": "[if(policies.containerService().enableAutoScaling, 1, json('null'))]"
+          }
+        ],
+        "autoScalerProfile": {
+          "expander": "most-pods",
+          "scan-interval": "[if(policies.containerService().enableAutoScaling, '10s', json('null'))]",
+          "scale-down-utilization-threshold": "[if(policies.containerService().enableAutoScaling, '0.5', json('null'))]",
+          "scale-down-unneeded-time": "[if(policies.containerService().enableAutoScaling, '10m', json('null'))]",
+          "skip-nodes-with-local-storage": "false",
+          "max-empty-bulk-delete": "[if(policies.containerService().enableAutoScaling, '2', json('null'))]",
+          "ok-total-unready-count": "[if(policies.containerService().enableAutoScaling, '1', json('null'))]"
+        },
+        "servicePrincipalProfile": {
+          "clientId": "msi"
+        },
+        "networkProfile": {
+          "loadBalancerSku": "standard",
+          "networkPlugin": "[policies.containerService().networkPlugin]",
+          "podCidr": "10.4.0.0/16",
+          "serviceCidr": "10.5.0.0/16",
+          "dnsServiceIp": "10.5.5.5"
+        },
+        "apiServerAccessProfile": {
+          "enablePrivateCluster": "[policies.containerService().enablePrivateCluster]"
+        },
+        "addonProfiles": {
+          "KubeDashboard": {
+            "enabled": "[policies.containerService().KubeDashboard]"
+          },
+          "httpApplicationRouting": {
+            "enabled": "[policies.containerService().enableHttpApplicationRouting]"
+          },
+          "azurepolicy": {
+            "enabled": "[policies.containerService().enableAzurePolicy]"
+          },
+          "omsAgent": {
+            "enabled": "[policies.containerService().enableOmsAgent]",
+            "config": {
+              "logAnalyticsWorkspaceResourceID": "[variables('logWorkspaceId')]"
+            }
+          }
+        }
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      }
+    },
+    {
+      "condition": "[variables('isPrimaryRegion')]",
+      "type": "Microsoft.ServiceBus/namespaces",
+      "sku": {
+        "name": "[parameters('frontServiceBusSKUName')]",
+        "tier": "[parameters('frontServiceBusSKUName')]"
+      },
+      "name": "[variables('frontBus')]",
+      "apiVersion": "[policies.servicebus().apiVersion]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "minimumTlsVersion": "1.2",
+        "serviceBusEndpoint": "[concat('https://', variables('frontBus'),'.servicebus.windows.net:443/')]",
+        "status": "Active"
+      },
+      "resources": [
+        {
+          "condition": "[variables('isPrimaryRegion')]",
+          "type": "Microsoft.ServiceBus/namespaces/AuthorizationRules",
+          "name": "[format('{0}/{1}', variables('frontBus'), variables('servicebusAuthorization'))]",
+          "apiVersion": "[policies.servicebus().apiVersion]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "rights": ["Listen", "Send", "Manage"]
+          },
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('frontBus'))]"]
+        },
+        {
+          "condition": "[variables('isPrimaryRegion')]",
+          "type": "Microsoft.ServiceBus/namespaces/AuthorizationRules",
+          "name": "[concat(variables('frontBus'), '/SendListen')]",
+          "apiVersion": "[policies.servicebus().apiVersion]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "rights": ["Listen", "Send"]
+          },
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('frontBus'))]"]
+        },
+        {
+          "condition": "[variables('isPrimaryRegion')]",
+          "type": "Microsoft.ServiceBus/namespaces/providers/diagnosticSettings",
+          "name": "[concat(variables('frontBus'), '/Microsoft.Insights/service')]",
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('frontBus'))]"],
+          "apiVersion": "[policies.servicebus().diagnosticApiVersion]",
+          "properties": {
+            "name": "[concat(variables('frontBus'), '-logs')]",
+            "workspaceId": "[variables('logWorkspaceId')]",
+            "logs": [
+              {
+                "category": "OperationalLogs",
+                "enabled": true,
+                "retentionPolicy": {}
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "condition": "[variables('isPrimaryRegion')]",
+      "type": "Microsoft.ServiceBus/namespaces",
+      "sku": {
+        "name": "[parameters('backendServiceBusSKUName')]",
+        "tier": "[parameters('backendServiceBusSKUName')]"
+      },
+      "name": "[variables('backendBus')]",
+      "apiVersion": "[policies.servicebus().apiVersion]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "minimumTlsVersion": "1.2",
+        "serviceBusEndpoint": "[concat('https://', variables('backendBus'),'.servicebus.windows.net:443/')]",
+        "status": "Active"
+      },
+      "resources": [
+        {
+          "condition": "[variables('isPrimaryRegion')]",
+          "type": "Microsoft.ServiceBus/namespaces/AuthorizationRules",
+          "name": "[format('{0}/{1}', variables('backendBus'), variables('servicebusAuthorization'))]",
+          "apiVersion": "[policies.servicebus().apiVersion]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "rights": ["Listen", "Send", "Manage"]
+          },
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('backendBus'))]"]
+        },
+        {
+          "condition": "[variables('isPrimaryRegion')]",
+          "type": "Microsoft.ServiceBus/namespaces/AuthorizationRules",
+          "name": "[concat(variables('backendBus'), '/SendListen')]",
+          "apiVersion": "[policies.servicebus().apiVersion]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "rights": ["Listen", "Send"]
+          },
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('backendBus'))]"]
+        },
+        {
+          "condition": "[variables('isPrimaryRegion')]",
+          "type": "Microsoft.ServiceBus/namespaces/providers/diagnosticSettings",
+          "name": "[concat(variables('backendBus'), '/Microsoft.Insights/service')]",
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('backendBus'))]"],
+          "apiVersion": "[policies.servicebus().diagnosticApiVersion]",
+          "properties": {
+            "name": "[concat(variables('backendBus'), '-logs')]",
+            "workspaceId": "[variables('logWorkspaceId')]",
+            "logs": [
+              {
+                "category": "OperationalLogs",
+                "enabled": true,
+                "retentionPolicy": {}
+              }
+            ]
+          }
+        },
+        {
+          "type": "Microsoft.ServiceBus/namespaces/topics",
+          "condition": "[variables('isPrimaryRegion')]",
+          "name": "[concat(variables('backendBus'), '/task-low')]",
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('backendBus'))]"],
+          "apiVersion": "[policies.servicebus().apiVersion]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "defaultMessageTimeToLive": "PT6H",
+            "maxSizeInMegabytes": "[variables('topicSize')]",
+            "requiresDuplicateDetection": false,
+            "duplicateDetectionHistoryTimeWindow": "PT10M",
+            "enableBatchedOperations": true,
+            "status": "Active",
+            "supportOrdering": false,
+            "autoDeleteOnIdle": "P10675199DT2H48M5.477S",
+            "enablePartitioning": "[not(variables('isPremimumBackendServicebus'))]",
+            "enableExpress": false
+          }
+        },
+        {
+          "type": "Microsoft.ServiceBus/namespaces/topics",
+          "condition": "[variables('isPrimaryRegion')]",
+          "name": "[concat(variables('backendBus'), '/task-medium')]",
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('backendBus'))]"],
+          "apiVersion": "[policies.servicebus().apiVersion]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "defaultMessageTimeToLive": "PT6H",
+            "maxSizeInMegabytes": "[variables('topicSize')]",
+            "requiresDuplicateDetection": false,
+            "duplicateDetectionHistoryTimeWindow": "PT10M",
+            "enableBatchedOperations": true,
+            "status": "Active",
+            "supportOrdering": false,
+            "autoDeleteOnIdle": "P10675199DT2H48M5.477S",
+            "enablePartitioning": "[not(variables('isPremimumBackendServicebus'))]",
+            "enableExpress": false
+          }
+        },
+        {
+          "type": "Microsoft.ServiceBus/namespaces/topics",
+          "condition": "[variables('isPrimaryRegion')]",
+          "name": "[concat(variables('backendBus'), '/task-high')]",
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('backendBus'))]"],
+          "apiVersion": "[policies.servicebus().apiVersion]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "defaultMessageTimeToLive": "PT6H",
+            "maxSizeInMegabytes": "[variables('topicSize')]",
+            "requiresDuplicateDetection": false,
+            "duplicateDetectionHistoryTimeWindow": "PT10M",
+            "enableBatchedOperations": true,
+            "status": "Active",
+            "supportOrdering": false,
+            "autoDeleteOnIdle": "P10675199DT2H48M5.477S",
+            "enablePartitioning": "[not(variables('isPremimumBackendServicebus'))]",
+            "enableExpress": false
+          }
+        },
+        {
+          "type": "Microsoft.ServiceBus/namespaces/topics",
+          "condition": "[variables('isPrimaryRegion')]",
+          "name": "[concat(variables('backendBus'), '/task-highest')]",
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('backendBus'))]"],
+          "apiVersion": "[policies.servicebus().apiVersion]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "defaultMessageTimeToLive": "PT6H",
+            "maxSizeInMegabytes": "[variables('topicSize')]",
+            "requiresDuplicateDetection": false,
+            "duplicateDetectionHistoryTimeWindow": "PT10M",
+            "enableBatchedOperations": true,
+            "status": "Active",
+            "supportOrdering": false,
+            "autoDeleteOnIdle": "P10675199DT2H48M5.477S",
+            "enablePartitioning": "[not(variables('isPremimumBackendServicebus'))]",
+            "enableExpress": false
+          }
+        },
+        {
+          "type": "Microsoft.ServiceBus/namespaces/topics",
+          "condition": "[variables('isPrimaryRegion')]",
+          "name": "[concat(variables('backendBus'), '/internal-timer-triggered')]",
+          "dependsOn": ["[resourceId('Microsoft.ServiceBus/namespaces', variables('backendBus'))]"],
+          "apiVersion": "[policies.servicebus().apiVersion]",
+          "location": "[parameters('location')]",
+          "properties": {
+            "defaultMessageTimeToLive": "PT6H",
+            "maxSizeInMegabytes": "[variables('topicSize')]",
+            "requiresDuplicateDetection": false,
+            "duplicateDetectionHistoryTimeWindow": "PT10M",
+            "enableBatchedOperations": true,
+            "status": "Active",
+            "supportOrdering": false,
+            "autoDeleteOnIdle": "P10675199DT2H48M5.477S",
+            "enablePartitioning": "[not(variables('isPremimumBackendServicebus'))]",
+            "enableExpress": false
+          }
+        }
+      ]
+    },
+    {
+      "condition": "[variables('needDatabase')]",
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "[policies.sqlDatabase().apiVersion]",
+      "name": "[format('{0}/{1}', variables('primaryDatabaseServerName'), variables('databaseName'))]",
+      "dependsOn": ["[resourceId('Microsoft.Sql/servers', variables('primaryDatabaseServerName'))]"],
+      "location": "[parameters('location')]",
+      "sku": {
+        "tier": "[parameters('databaseSkuTier')]",
+        "capacity": "[parameters('primaryDatabaseCapacity')]",
+        "name": "[variables('databaseSkuName')]",
+        "family": "[variables('databaseFamily')]"
+      },
+      "kind": "[variables('databaseKind')]",
+      "properties": {
+        "edition": "[policies.sqlDatabase().edition]",
+        "collation": "[policies.sqlDatabase().collation]",
+        "requestedServiceObjectiveName": "[policies.sqlDatabase().requestedServiceObjectiveName]",
+        "maxSizeBytes": "[parameters('databaseMaxSize')]",
+
+        "zoneRedundant": "[policies.sqlDatabase().zoneRedundant]",
+        "readScale": "[policies.sqlDatabase().readScale]",
+        "requestedBackupStorageRedundancy": "[policies.sqlDatabase().requestedBackupStorageRedundancy]",
+        "isLedgerOn": "[policies.sqlDatabase().isLedgerOn]",
+        "autoPauseDelay": "[policies.sqlDatabase().autoPauseDelay]",
+        "minCapacity": "[policies.sqlDatabase().minCapacity]"
+      },
+      "resources": [
+        {
+          "type": "Microsoft.Sql/servers/databases/backupShortTermRetentionPolicies",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "condition": "[variables('needDatabase')]",
+          "name": "[format('{0}/{1}/default', variables('primaryDatabaseServerName'), variables('databaseName'))]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers/databases', variables('primaryDatabaseServerName'), variables('databaseName'))]"
+          ],
+          "properties": {
+            "retentionDays": "[policies.sqlDatabase().backupSTRetentionDays]",
+            "diffBackupIntervalInHours": "[policies.sqlDatabase().diffBackupIntervalInHours]"
+          }
+        },
+        {
+          "type": "Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "condition": "[variables('needDatabase')]",
+          "name": "[format('{0}/{1}/default', variables('primaryDatabaseServerName'), variables('databaseName'))]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers/databases', variables('primaryDatabaseServerName'), variables('databaseName'))]"
+          ],
+          "properties": {
+            "weeklyRetention": "[policies.sqlDatabase().backupLTRetentionWeeks]",
+            "monthlyRetention": "[policies.sqlDatabase().monthlyRetention]",
+            "yearlyRetention": "[policies.sqlDatabase().yearlyRetention]",
+            "weekOfYear": "[policies.sqlDatabase().weekOfYear]"
+          }
+        },
+        {
+          "type": "Microsoft.Sql/servers/databases/securityAlertPolicies",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "condition": "[variables('needDatabase')]",
+          "name": "[format('{0}/{1}/securityAlertPolicies', variables('primaryDatabaseServerName'), variables('databaseName'))]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers/databases', variables('primaryDatabaseServerName'), variables('databaseName'))]"
+          ],
+          "properties": {
+            "state": "Enabled",
+            "emailAddresses": "[parameters('monitoringAlertingMails')]",
+            "emailAccountAdmins": true
+          }
+        },
+        {
+          "type": "Microsoft.Sql/servers/databases/vulnerabilityAssessments",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "condition": "[variables('needDatabase')]",
+          "name": "[format('{0}/{1}/vulnerabilityAssessments', variables('primaryDatabaseServerName'), variables('databaseName'))]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers/databases', variables('primaryDatabaseServerName'), variables('databaseName'))]"
+          ],
+          "properties": {
+            "storageContainerPath": "[format('{0}va-{1}-{2}/', reference(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).primaryEndpoints.blob, variables('primaryDatabaseServerName'), variables('databaseName'))]",
+            "storageAccountAccessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).keys[0].value]",
+            "recurringScans": {
+              "isEnabled": true,
+              "emailSubscriptionAdmins": true,
+              "emails": "[parameters('monitoringAlertingMails')]"
+            }
+          }
+        },
+        {
+          "type": "providers/diagnosticSettings",
+          "apiVersion": "[policies.sqlDatabase().diagnosticApiVersion]",
+          "condition": "[variables('needDatabase')]",
+          "name": "[format('Microsoft.Insights/{0}-diagnostic', variables('databaseName'))]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers/databases', variables('primaryDatabaseServerName'), variables('databaseName'))]"
+          ],
+          "properties": {
+            "name": "[concat(variables('databaseName'),'-diagnostic')]",
+            "workspaceId": "[reference(resourceId(variables('primaryResourceGroup'), 'Microsoft.ServiceBus/namespaces/providers/diagnosticSettings', variables('frontBus'), 'Microsoft.Insights', 'service'), policies.servicebus().diagnosticApiVersion).workspaceId]",
+            "logs": [
+              {
+                "category": "SQLSecurityAuditEvents",
+                "enabled": true,
+                "retentionPolicy": {
+                  "days": 0,
+                  "enabled": false
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "Microsoft.Sql/servers/failoverGroups",
+      "apiVersion": "[policies.sqlDatabase().apiVersion]",
+      "condition": "[variables('needDatabase')]",
+      "name": "[concat(variables('primaryDatabaseServerName'), '/',variables('databaseFailoverGroupName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers/databases', variables('primaryDatabaseServerName'), variables('databaseName'))]",
+        "[resourceId('Microsoft.Sql/servers', variables('secondaryDatabaseServerName'))]"
+      ],
+      "properties": {
+        "readWriteEndpoint": {
+          "failoverPolicy": "Automatic",
+          "failoverWithDataLossGracePeriodMinutes": 60
+        },
+        "readOnlyEndpoint": {
+          "failoverPolicy": "Disabled"
+        },
+        "partnerServers": [
+          {
+            "id": "[resourceId('Microsoft.Sql/servers', variables('secondaryDatabaseServerName'))]"
+          }
+        ],
+        "databases": ["[resourceId('Microsoft.Sql/servers/databases', variables('primaryDatabaseServerName'), variables('databaseName'))]"]
+      }
+    },
+    {
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "[policies.sqlDatabase().apiVersion]",
+      "condition": "[variables('needDatabase')]",
+      "name": "[format('{0}/{1}', variables('secondaryDatabaseServerName'), variables('databaseName'))]",
+      "location": "[parameters('pairedLocation')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers/failoverGroups', variables('primaryDatabaseServerName') , variables('databaseFailoverGroupName'))]"
+      ],
+      "sku": {
+        "tier": "[parameters('databaseSkuTier')]",
+        "capacity": "[parameters('secondaryDatabaseCapacity')]",
+        "name": "[variables('databaseSkuName')]",
+        "family": "[variables('databaseFamily')]"
+      },
+      "kind": "[variables('databaseKind')]",
+      "properties": {
+        "edition": "[policies.sqlDatabase().edition]",
+        "collation": "[policies.sqlDatabase().collation]",
+        "requestedServiceObjectiveName": "[policies.sqlDatabase().requestedServiceObjectiveName]",
+        "maxSizeBytes": "[parameters('databaseMaxSize')]",
+
+        "zoneRedundant": "[policies.sqlDatabase().zoneRedundant]",
+        "readScale": "[policies.sqlDatabase().readScale]",
+        "requestedBackupStorageRedundancy": "[policies.sqlDatabase().requestedBackupStorageRedundancy]",
+        "isLedgerOn": "[policies.sqlDatabase().isLedgerOn]",
+        "autoPauseDelay": "[policies.sqlDatabase().autoPauseDelay]",
+        "minCapacity": "[policies.sqlDatabase().minCapacity]"
+      },
+      "resources": [
+        {
+          "type": "Microsoft.Sql/servers/databases/backupShortTermRetentionPolicies",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "condition": "[variables('needDatabase')]",
+          "name": "[format('{0}/{1}/default', variables('secondaryDatabaseServerName'), variables('databaseName'))]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers/databases', variables('secondaryDatabaseServerName'), variables('databaseName'))]"
+          ],
+          "properties": {
+            "retentionDays": "[policies.sqlDatabase().backupSTRetentionDays]",
+            "diffBackupIntervalInHours": "[policies.sqlDatabase().diffBackupIntervalInHours]"
+          }
+        },
+        {
+          "type": "Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "condition": "[variables('needDatabase')]",
+          "name": "[format('{0}/{1}/default', variables('secondaryDatabaseServerName'), variables('databaseName'))]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers/databases', variables('secondaryDatabaseServerName'), variables('databaseName'))]"
+          ],
+          "properties": {
+            "weeklyRetention": "[policies.sqlDatabase().backupLTRetentionWeeks]",
+            "monthlyRetention": "[policies.sqlDatabase().monthlyRetention]",
+            "yearlyRetention": "[policies.sqlDatabase().yearlyRetention]",
+            "weekOfYear": "[policies.sqlDatabase().weekOfYear]"
+          }
+        },
+        {
+          "type": "Microsoft.Sql/servers/databases/securityAlertPolicies",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "condition": "[variables('needDatabase')]",
+          "name": "[format('{0}/{1}/securityAlertPolicies', variables('secondaryDatabaseServerName'), variables('databaseName'))]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers/databases', variables('secondaryDatabaseServerName'), variables('databaseName'))]"
+          ],
+          "properties": {
+            "state": "Enabled",
+            "emailAddresses": "[parameters('monitoringAlertingMails')]",
+            "emailAccountAdmins": true
+          }
+        },
+        {
+          "type": "Microsoft.Sql/servers/databases/vulnerabilityAssessments",
+          "apiVersion": "[policies.sqlDatabase().apiVersion]",
+          "condition": "[variables('needDatabase')]",
+          "name": "[format('{0}/{1}/vulnerabilityAssessments', variables('secondaryDatabaseServerName'), variables('databaseName'))]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers/databases', variables('secondaryDatabaseServerName'), variables('databaseName'))]"
+          ],
+          "properties": {
+            "storageContainerPath": "[format('{0}va-{1}-{2}/', reference(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).primaryEndpoints.blob, variables('secondaryDatabaseServerName'), variables('databaseName'))]",
+            "storageAccountAccessKey": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('logsStorageName')), policies.storage().apiVersion).keys[0].value]",
+            "recurringScans": {
+              "isEnabled": true,
+              "emailSubscriptionAdmins": true,
+              "emails": "[parameters('monitoringAlertingMails')]"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+    "databasesMssql": {
+      "condition": "[variables('needDatabase')]",
+      "type": "array",
+      "value": [
+        {
+          "script": "./mssql/schemas.sql",
+          "server": "[variables('primaryDatabaseServerName')]",
+          "database": "[variables('databaseName')]",
+          "secondaryServer": "[variables('secondaryDatabaseServerName')]",
+          "keyvault": "[variables('keyVaultName')]"
+        }
+      ]
+    },
+    "controlPlaneFQDN": {
+      "type": "string",
+      "value": "[reference(concat('Microsoft.ContainerService/managedClusters/', variables('aksClusterName'))).fqdn]"
+    },
+    "clusterName": {
+      "type": "string",
+      "value": "[variables('aksClusterName')]"
+    }
+  },
+  "functions": [
+    {
+      "namespace": "policies",
+      "members": {
+        "storage": {
+          "output": {
+            "value": {
+              "apiVersion": "2022-05-01",
+              "restorePolicy": {
+                "enabled": true,
+                "days": 13
+              },
+              "containerDeleteRetentionPolicy": {
+                "enabled": true,
+                "days": 14
+              },
+              "deleteRetentionPolicy": {
+                "allowPermanentDelete": false,
+                "enabled": true,
+                "days": 14
+              },
+              "isVersioningEnabled": true,
+              "allowBlobPublicAccess": false
+            },
+            "type": "object"
+          }
+        },
+        "log": {
+          "output": {
+            "value": {
+              "apiVersion": "2021-12-01-preview",
+              "retentionInDays": 90,
+              "dailyQuotaGb": 1,
+              "dataSources": {
+                "apiVersion": "2020-08-01"
+              },
+              "savedSearches": {
+                "apiVersion": "2020-08-01"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "insight": {
+          "output": {
+            "value": {
+              "apiVersion": "2020-02-02",
+              "diagnosticApiVersion": "2020-01-01-preview",
+              "activityLogAlertApiVersion": "2020-10-01",
+              "webTestApiVersion": "2022-06-15",
+              "actionGroupApiVersion": "2022-06-01",
+              "scheduledQueryApiVersion": "2022-06-15",
+              "metricAlertApiVersion": "2018-03-01",
+              "RetentionInDays": 90,
+              "type": "web"
+            },
+            "type": "object"
+          }
+        },
+        "sqlDatabase": {
+          "output": {
+            "value": {
+              "apiVersion": "2022-02-01-preview",
+              "diagnosticApiVersion": "2021-05-01-preview",
+              "softVersion": "12.0",
+              "edition": "Standard",
+              "collation": "SQL_Latin1_General_CP1_CS_AS",
+              "requestedServiceObjectiveName": "Standard",
+              "zoneRedundant": false,
+              "readScale": "Disabled",
+              "requestedBackupStorageRedundancy": "Geo",
+              "isLedgerOn": false,
+              "autoPauseDelay": -1,
+              "minCapacity": 0.5,
+              "backupSTRetentionDays": 30,
+              "diffBackupIntervalInHours": 24,
+              "backupLTRetentionWeeks": "P2W",
+              "monthlyRetention": "PT0S",
+              "yearlyRetention": "PT0S",
+              "weekOfYear": 1
+            },
+            "type": "object"
+          }
+        },
+        "keyVault": {
+          "output": {
+            "value": {
+              "apiVersion": "2022-07-01",
+              "diagnosticApiVersion": "2017-05-01-preview",
+              "keyVaultSku": "Standard",
+              "enabledForDeployment": true,
+              "enabledForTemplateDeployment": true,
+              "enabledForDiskEncryption": true,
+              "softDeleteRetentionInDays": 14,
+              "adminLogin": "DB-ADMIN-LOGIN",
+              "adminPassword": "DB-ADMIN-PWD",
+              "applicationLogin": "DB-APPLICATION-LOGIN",
+              "applicationPassword": "DB-APPLICATION-PWD",
+              "supportLogin": "DB-SUPPORT-LOGIN",
+              "supportPassword": "DB-SUPPORT-PWD",
+              "firewallAllowedIps": "DB-ALLOWED-IPS",
+              "primarySearchbusConnectionSecret": "SEARCH-BUS1",
+              "secondarySearchConnectionSecret": "SEARCH-BUS2",
+              "primaryServicebusConnectionSecret": "MODULE-BUS1",
+              "secondaryServicebusConnectionSecret": "MODULE-BUS2",
+              "frontServicebusConnectionSecret": "MODULE-BUS-FRONTAL",
+              "backendServicebusConnectionSecret": "MODULE-BUS-BACKEND",
+              "insightInstrumentationKeySecret": "INSIGHT-IKEY",
+              "insightConnectionsStringSecret": "INSIGHT-CSTRING",
+              "coreBackUpCs": "DB-COREBACKUP-CS",
+              "moduleApiKey1": "MODULE-API-KEY1",
+              "moduleApiKey2": "MODULE-API-KEY2",
+              "redisSysPassword": "REDIS-SYS-PWD",
+              "redisPassword": "REDIS-PWD"
+            },
+            "type": "object"
+          }
+        },
+        "servicebus": {
+          "output": {
+            "value": {
+              "apiVersion": "2022-01-01-preview",
+              "diagnosticApiVersion": "2017-05-01-preview"
+            },
+            "type": "object"
+          }
+        },
+        "containerService": {
+          "output": {
+            "value": {
+              "apiVersion": "2021-02-01",
+              "networkPlugin": "kubenet",
+              "enableAutoScaling": true,
+              "enableRBAC": true,
+              "KubeDashboard": false,
+              "enablePrivateCluster": false,
+              "enableHttpApplicationRouting": false,
+              "enableAzurePolicy": true,
+              "enableOmsAgent": true,
+              "maxPods": 110,
+              "osType": "Linux",
+              "maxMonitoPoolNodes": 20,
+              "maxFuncPoolNodes": 100,
+              "maxHfcorePoolNodes": 100
+            },
+            "type": "object"
+          }
+        },
+        "vnet": {
+          "output": {
+            "value": {
+              "apiVersion": "2022-05-01",
+              "privateEndpointNetworkPolicies": "Disabled",
+              "privateLinkServiceNetworkPolicies": "Enabled",
+              "networkContributorRole": "4d97b98b-1d4f-4787-a291-c67834d212e7",
+              "privateEndpoints": {
+                "apiVersion": "2021-05-01"
+              },
+              "virtualNetworkLinks": {
+                "apiVersion": "2020-06-01"
+              },
+              "roleAssignment": {
+                "apiVersion": "2017-05-01"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "deployment": {
+          "output": {
+            "value": {
+              "apiVersion": "2021-04-01"
+            },
+            "type": "object"
+          }
+        },
+        "networking": {
+          "output": {
+            "value": {
+              "apiVersion": "2022-07-01",
+              "sku": "Standard",
+              "publicIPAllocationMethod": "Static"
+            },
+            "type": "object"
+          }
+        },
+        "firewall": {
+          "output": {
+            "value": {
+              "apiVersion": "2020-11-01",
+              "sku": "Standard",
+              "threatIntelMode": "Alert"
+            },
+            "type": "object"
+          }
+        },
+        "operationManagement": {
+          "output": {
+            "value": {
+              "apiVersion": "2015-11-01-preview"
+            },
+            "type": "object"
+          }
+        },
+        "tafficManager": {
+          "output": {
+            "value": {
+              "apiVersion": "2018-04-01"
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "namespace": "network",
+      "members": {
+        "settings": {
+          "parameters": [
+            {
+              "name": "regionalIpPrefix",
+              "type": "string"
+            },
+            {
+              "name": "moduleIdentifier",
+              "type": "int"
+            }
+          ],
+          "output": {
+            "value": {
+              "regionalSubnet": "[format('{0}.0.0/14', parameters('regionalIpPrefix'))]",
+              "moduleSubnet": "[format('{0}.{1}.0/21', parameters('regionalIpPrefix'), parameters('moduleIdentifier'))]",
+              "globalSubnet": "[format('{0}.8.0/21', parameters('regionalIpPrefix'))]",
+              "commonServicesSubnet": "[format('{0}.48.0/21', parameters('regionalIpPrefix'))]",
+              "searchSubnet": "[format('{0}.40.0/21', parameters('regionalIpPrefix'))]",
+
+              "wafSubnet": "[format('{0}.{1}.0/26', parameters('regionalIpPrefix'), add(0, parameters('moduleIdentifier')))]",
+              "firewallSubnet": "[format('{0}.{1}.64/26', parameters('regionalIpPrefix'), add(0, parameters('moduleIdentifier')))]",
+              "nousedSubnet0": "[format('{0}.{1}.128/26', parameters('regionalIpPrefix'), add(0, parameters('moduleIdentifier')))]",
+              "nousedSubnet1": "[format('{0}.{1}.192/26', parameters('regionalIpPrefix'), add(0, parameters('moduleIdentifier')))]",
+
+              "apimSubnet": "[format('{0}.{1}.0/24', parameters('regionalIpPrefix'), add(1, parameters('moduleIdentifier')))]",
+              "sqlSubnet": "[format('{0}.{1}.0/24', parameters('regionalIpPrefix'), add(2, parameters('moduleIdentifier')))]",
+
+              "keyvaultSubnet": "[format('{0}.{1}.0/26', parameters('regionalIpPrefix'), add(3, parameters('moduleIdentifier')))]",
+              "storageAccountSubnet": "[format('{0}.{1}.64/26', parameters('regionalIpPrefix'), add(3, parameters('moduleIdentifier')))]",
+              "nousedSubnet2": "[format('{0}.{1}.128/26', parameters('regionalIpPrefix'), add(3, parameters('moduleIdentifier')))]",
+              "nousedSubnet3": "[format('{0}.{1}.192/26', parameters('regionalIpPrefix'), add(3, parameters('moduleIdentifier')))]",
+
+              "faAksSubnet": "[format('{0}.{1}.0/24', parameters('regionalIpPrefix'), add(4, parameters('moduleIdentifier')))]",
+              "servicebusSubnet": "[format('{0}.{1}.0/24', parameters('regionalIpPrefix'), add(5, parameters('moduleIdentifier')))]",
+
+              "eventhubSubnet": "[format('{0}.{1}.0/24', parameters('regionalIpPrefix'), add(6, parameters('moduleIdentifier')))]",
+              "nousedSubnet4": "[format('{0}.{1}.0/24', parameters('regionalIpPrefix'), add(7, parameters('moduleIdentifier')))]"
+            },
+            "type": "object"
+          }
+        }
+      }
+    }
+  ]
+}

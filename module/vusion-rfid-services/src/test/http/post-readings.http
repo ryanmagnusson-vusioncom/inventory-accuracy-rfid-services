@@ -1,0 +1,15 @@
+
+@sensorId = FE7486598A76
+
+###
+POST {{baseUrl}}/epc/stores/{{storeId}}/sensors/{{sensorId}}
+Content-Type: application/json
+
+[{
+    "data":  "30340199D431D203070172B9",
+    "rssi": -86,
+    "timestamp": "2024-07-30T07:24:55Z"
+}]
+
+
+

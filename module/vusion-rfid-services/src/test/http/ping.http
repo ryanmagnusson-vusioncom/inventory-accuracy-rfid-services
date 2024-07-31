@@ -1,0 +1,98 @@
+
+@baseUrl-weua = https://api-weua.vusion-dev.io
+@apimKey-weua = d9661415398642e5a00a747a2df1ce85;product=internaltestingbackend
+@storeId-weua = rd_dev_sim_ecs.store1
+@labelId-weua = w622-225m
+
+@transmitterId = 100002
+@baseUrl= http://localhost:8080
+@apimKey= {{apimKey-weua}}
+@storeId= {{storeId-weua}}
+@labelId= {{labelId-weua}}
+
+###
+# @name ping labels
+POST {{baseUrl}}/api/v1/stores/{{storeId}}/labels/ping
+Content-Type: application/json
+
+[
+  {
+    "labelId": "{{labelId}}", "taskPriority": "PING"
+  },
+  {
+    "labelId": "w622-22m6", "taskPriority": "PING"
+  }
+]
+
+
+###
+# @name wrong link ids
+POST {{baseUrl}}/api/v1/stores/{{storeId}}/labels/ping
+Content-Type: application/json
+
+[
+  {
+    "labelId": "{{labelId}}", "taskPriority": "PING"
+  },
+  {
+    "labelId": "f8798ze7f", "taskPriority": "PING"
+  }
+]
+
+
+###
+# wrong ping request
+POST {{baseUrl}}/api/v1/stores/{{storeId}}/labels/ping
+Content-Type: application/json
+
+[
+  {
+    "labelIqd": "{{labelId}}", "taskPriority": "PING"
+  },
+  {
+    "labelId": "w622-22m6", "taskPriority": "PING"
+  }
+]
+
+###
+# wrong ping request JSON format
+POST {{baseUrl}}/api/v1/stores/{{storeId}}/labels/ping
+Content-Type: application/json
+
+{
+  {
+    "labelIqd": "{{labelId}}", "taskPriority": "PING"
+  },
+  {
+    "labelId": "w622-22m6", "taskPriority": "PING"
+  }
+]
+
+
+###
+# empty array
+POST {{baseUrl}}/api/v1/stores/{{storeId}}/labels/ping
+Content-Type: application/json
+
+[]
+
+
+###
+# wrong store
+POST {{baseUrl}}/api/v1/stores/not a store for sure/labels/ping
+Content-Type: application/json
+
+[
+  {
+    "labelId": "{{labelId}}", "taskPriority": "PING"
+  },
+  {
+    "labelId": "w622-22m6", "taskPriority": "PING"
+  }
+]
+
+
+###
+# empty body, 400 expected
+POST {{baseUrl}}/api/v1/stores/{{storeId}}/labels/ping
+Content-Type: application/json

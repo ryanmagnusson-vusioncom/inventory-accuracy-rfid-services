@@ -1,0 +1,23 @@
+package io.vusion.vtransmit.v2.commons.repository;
+
+import io.vusion.rfid.domain.model.StoreEPCSensorReading;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
+
+public interface EPCRepository {
+
+    void save(StoreEPCSensorReading reading);
+
+    void saveAll(Collection<StoreEPCSensorReading> readings);
+
+    Collection<StoreEPCSensorReading> getAll();
+
+    Collection<StoreEPCSensorReading> findAll(String store);
+
+    Collection<StoreEPCSensorReading> findAllByDate(String store, LocalDate date);
+
+    Collection<StoreEPCSensorReading> findAllByDateTimeRange(String store, Instant start, Instant end);
+}

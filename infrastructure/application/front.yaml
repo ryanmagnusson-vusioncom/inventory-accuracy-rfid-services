@@ -1,0 +1,327 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oep-application
+  namespace: __app_namespace__
+stringData:
+  api.key1: __API_KEY1__
+  api.key2: __API_KEY2__
+  db.user: __DB_USER__
+  db.password: __DB_PASSWORD__
+  redis.user: __redis_user__
+  redis.password: __redis_password__
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oep-connectivity
+  namespace: __app_namespace__
+stringData:
+  bus.cs.frontal: __BUS_CS_FRONT__
+  bus.cs.backend: __BUS_CS_BACKEND__
+  bus.cs.search.primary: __BUS_CS_SEARCH_PRIMARY__
+  bus.cs.search.secondary: __BUS_CS_SEARCH_SECONDARY__
+  tasks.storage.cs: __STORAGE_CS__
+  db.host.namespace: __DB_NAMESPACE__
+  redis.host.read: __redis_host_read__
+  redis.host.write: __redis_host_write__
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oep-application
+  namespace: __app_namespace__
+data:
+  application-prod.properties: |-
+    logging.level.root=${LOGGING_LEVEL:INFO}
+    spring.application.name=open-esl-front
+    server.port=8080
+    # Preferred JSON mapper to use for HTTP message conversion.
+    spring.http.converters.preferred-json-mapper=gson
+    internal.service.bus.connection.string=${BUS_CS_BACKEND}
+    open.esl.service.bus.connection.string=${BUS_CS_FRONT}
+    search.service.bus.primary.connection.string=${BUS_CS_SEARCH_PRIMARY}
+    search.service.bus.secondary.connection.string=${BUS_CS_SEARCH_SECONDARY}
+    open.esl.api.key1=${API_KEY1:imagotag}
+    open.esl.api.key2=${API_KEY2:imagotag}
+    message.max.retry.count=${MAX_RETRY_COUNT:5}
+    open.esl.task.storage.connection.string=${STORAGE_CS}
+    open.esl.db.user=${DB_USER}
+    open.esl.db.password=${DB_PASS}
+    open.esl.db.server=${DB_NAMESPACE}
+    open.esl.db.name=${DB_NAME:openesldb}    
+    open.esl.redis.read.host=${REDIS_HOST_READ}
+    open.esl.redis.write.host=${REDIS_HOST_WRITE}
+    open.esl.redis.password=${REDIS_PASSWORD}
+    open.esl.redis.user=${REDIS_USER:redis}
+    open.esl.redis.port=${REDIS_PORT_6379_TCP_PORT:6379}
+    logging.level.org=info
+    logging.level.com.azure.messaging.servicebus=warn
+    logging.level.com.azure.core.amqp=error
+
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oep-front
+  namespace: __app_namespace__
+  labels:
+    app: oep-front
+    tier: front
+spec:
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: oep-front
+      tier: front
+  template:
+    metadata:
+      labels:
+        app: oep-front
+        tier: front
+    spec:
+      volumes:
+        - name: application-properties
+          configMap:
+            name: oep-application
+        - name: zipstorage
+          azureFile:
+            secretName: azure-storage-secret
+            shareName: farepository
+            readOnly: true
+        - name: wwwroot
+          emptyDir: {}
+      initContainers:
+        - name: copy
+          image: docker.io/library/busybox:1.28
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - cp /tmp/open-esl-front-__app_version__.jar /home/app.jar
+          resources: {}
+          volumeMounts:
+            - name: zipstorage
+              mountPath: /tmp
+            - name: wwwroot
+              mountPath: /home
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+      containers:
+        - image: azul/zulu-openjdk-alpine:20-latest
+          name: oep-rfid
+          command:
+            - sh
+            - -c
+          args:
+            - >
+              cd /application
+
+              java -jar app.jar --spring.profiles.active=prod -Dspring.config.location=/application/config/application-prod.properties
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /application/config
+              name: application-properties
+            - mountPath: /application
+              name: wwwroot
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 1200Mi
+            requests:
+              cpu: 800m
+              memory: 1000Mi
+          readinessProbe:
+            httpGet:
+              path: /api/v1/ping
+              port: 8080
+              scheme: HTTP
+            timeoutSeconds: 240
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /api/v1/ping
+              port: 8080
+              scheme: HTTP
+            timeoutSeconds: 240
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          env:
+            - name: JVM_OPTIONS
+              value: -XX:MaxRAMPercentage=80.0 -XX:+UseG1GC -XX:+UseContainerSupport
+                -XX:-OmitStackTraceInFastThrow
+                -Djava.security.egd=file:/dev/./urandom
+            - name: BUS_CS_FRONT
+              valueFrom:
+                secretKeyRef:
+                  name: oep-connectivity
+                  key: bus.cs.frontal
+                  optional: false
+            - name: STORAGE_CS
+              valueFrom:
+                secretKeyRef:
+                  name: oep-connectivity
+                  key: tasks.storage.cs
+                  optional: false
+            - name: API_KEY1
+              valueFrom:
+                secretKeyRef:
+                  name: oep-application
+                  key: api.key1
+                  optional: true
+            - name: API_KEY2
+              valueFrom:
+                secretKeyRef:
+                  name: oep-application
+                  key: api.key2
+                  optional: true
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: oep-application
+                  key: db.user
+                  optional: false
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: oep-application
+                  key: db.password
+                  optional: false
+            - name: DB_NAMESPACE
+              valueFrom:
+                secretKeyRef:
+                  name: oep-connectivity
+                  key: db.host.namespace
+                  optional: false
+            - name: REDIS_HOST_READ
+              valueFrom:
+                secretKeyRef:
+                  name: oep-connectivity
+                  key: redis.host.read
+                  optional: false
+            - name: REDIS_HOST_WRITE
+              valueFrom:
+                secretKeyRef:
+                  name: oep-connectivity
+                  key: redis.host.write
+                  optional: false
+            - name: REDIS_USER
+              valueFrom:
+                secretKeyRef:
+                  name: oep-application
+                  key: redis.user
+                  optional: false
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: oep-application
+                  key: redis.password
+                  optional: false        
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      serviceAccountName: oep-sa
+      serviceAccount: oep-sa
+      securityContext: {}
+      schedulerName: default-scheduler
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oep-front
+  namespace: __app_namespace__
+  labels:
+    expose: 'true'
+spec:
+  selector:
+    app: oep-front
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ope-front-hpa
+  namespace: __app_namespace__
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: oep-front
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oep-sa
+  namespace: __app_namespace__
+
+---
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - secrets
+      - configMaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: oep-manager-role
+  namespace: __app_namespace__
+
+---
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: oep-manager-role
+subjects:
+  - kind: ServiceAccount
+    name: oep-sa
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oep-sa-manager-rolebinding
+  namespace: __app_namespace__
