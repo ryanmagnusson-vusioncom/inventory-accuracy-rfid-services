@@ -25,6 +25,16 @@ jobs:
           java-version-file: .java-version
           distribution: 'microsoft'
 
+      - name: Create Maven File
+        uses: s4u/maven-settings-action@v2.3.0
+        with:
+          servers: |
+            [{
+                "id": "azure-java-lib",
+                "username": "${{ secrets.MAVEN_USER }}",
+                "password": "${{ secrets.MAVEN_PASSWORD }}"
+            }]
+
       - name: Build with Maven
         run: cd module && mvn clean install
 
