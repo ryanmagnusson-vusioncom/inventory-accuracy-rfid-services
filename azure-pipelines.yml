@@ -1,0 +1,47 @@
+trigger:
+  - master
+  - iterations/*  
+pool:
+  name: snakepip3
+  demands:
+    - maven
+
+jobs:
+  - job: InfrastructureJob
+    pool: Default
+    steps:
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Artifact: infrastructure'
+        inputs:
+          PathtoPublish: infrastructure
+          ArtifactName: infrastructure
+  - job: JAVA_build_job
+    pool: 'Default Java 20'
+    steps:
+      - task: Maven@4
+        displayName: Maven package
+        inputs:
+          mavenPomFile: module/pom.xml
+          goals: clean package
+      - task: CopyFiles@2
+        displayName: 'Copy all fat jars to dist'
+        inputs:
+          SourceFolder: '$(system.defaultworkingdirectory)/module/'
+          Contents: |
+            vusion-rfid-services/target/*.jar
+          TargetFolder: '$(Build.ArtifactStagingDirectory)/vusion-rfid'
+          OverWrite: true
+          flattenFolders: true
+          CleanTargetFolder: true
+      - task: PowerShell@2
+        displayName: 'Jars versioning'
+        inputs:
+          targetType: 'inline'
+          script: |
+            cd $(Build.ArtifactStagingDirectory)/vusion-rfid
+            Get-ChildItem -Recurse -Include "*.jar"|Rename-Item -NewName { $_.BaseName+"-$(Build.BuildId).jar" }
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Artifact: vusion-rfid'
+        inputs:
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)/vusion-rfid'
+          ArtifactName: vusion-rfid
