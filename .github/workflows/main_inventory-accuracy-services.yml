@@ -36,7 +36,7 @@ jobs:
             }]
 
       - name: Build with Maven
-        run: cd module && mvn clean install
+        run: cd module && mvn clean compile install
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
