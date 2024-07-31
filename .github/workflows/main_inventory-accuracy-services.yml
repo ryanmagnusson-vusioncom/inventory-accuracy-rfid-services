@@ -31,8 +31,8 @@ jobs:
           servers: |
             [{
                 "id": "azure-java-lib",
-                "username": "${{ secrets.MAVEN_USER }}",
-                "password": "${{ secrets.MAVEN_PASSWORD }}"
+                "username": "${{ secrets.VUSION_AZURE_JAVA_MVN_PASSWORD }}",
+                "password": "${{ secrets.VUSION_AZURE_JAVA_MVN_USER }}"
             }]
 
       - name: Build with Maven
