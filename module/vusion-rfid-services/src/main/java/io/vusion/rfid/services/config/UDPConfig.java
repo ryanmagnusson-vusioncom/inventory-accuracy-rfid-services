@@ -12,8 +12,15 @@ import org.springframework.integration.ip.udp.UnicastReceivingChannelAdapter;
 @Getter @Setter
 public class UDPConfig {
 
-    @Value("${rfid.udp.server.port:111111}")
+    @Value("${rfid.udp.server.port:11111}")
     private Integer udpServerPort;
+
+    @Value("${rfid.default.sensor.mac:EC62608F4AE0}")
+    private String defaultSensorMac;
+
+    @Value("${rfid.default.store.id:lab")
+    private String defaultStoreId;
+
 
     @Bean
     public IntegrationFlow processUniCastUdpMessage() {

@@ -29,7 +29,7 @@ public interface EPCReadingMapper {
     @Mapping(target = "withStoreId", source = "storeId")
     @Mapping(target = "withSensorMacAddress", source = "sensorMacAddress")
     @Mapping(target = "withData",  source = "data")
-    @Mapping(target = "withTimestamp", source = "timestamp")
+    @Mapping(target = "withTimestamp", source = "readingTimestamp")
     EPCReadingService.UniqueKey toEPCReadingEntityUniqueKey(EPCReadingEntity entity);
 
     @Mapping(target = "withStoreId", source = "storeId")
@@ -49,7 +49,7 @@ public interface EPCReadingMapper {
     @Mapping(target = "withStoreId", source = "reading.storeId")
     @Mapping(target = "withSensorMacAddress", source = "reading.macAddress")
     @Mapping(target = "withData",  source = "reading.data")
-    @Mapping(target = "withTimestamp", source = "reading.timestamp")
+    @Mapping(target = "withReadingTimestamp", source = "reading.timestamp")
     @Mapping(target = "withRssi", source = "reading.rssi")
     @Mapping(target = "withCorrelationId", expression = "java(FrontExecutionContext.getCorrelationId())")
     EPCReadingEntity mapEPCReadingFieldsToEntity(StoreEPCSensorReading reading);
@@ -57,14 +57,14 @@ public interface EPCReadingMapper {
     @Mapping(target = "withStoreId", source = "entity.storeId")
     @Mapping(target = "withMacAddress", source = "entity.sensorMacAddress")
     @Mapping(target = "withData",  source = "entity.data")
-    @Mapping(target = "withTimestamp", source = "entity.timestamp")
+    @Mapping(target = "withTimestamp", source = "entity.readingTimestamp")
     @Mapping(target = "withRssi", source = "entity.rssi")
     StoreEPCSensorReading toStoreEPCReading(EPCReadingEntity entity);
 
     @Mapping(target = "withStoreId", source = "entity.storeId")
     @Mapping(target = "withMacAddress", source = "entity.sensorMacAddress")
     @Mapping(target = "withData",  source = "entity.data")
-    @Mapping(target = "withTimestamp", source = "entity.timestamp")
+    @Mapping(target = "withTimestamp", source = "entity.readingTimestamp")
     @Mapping(target = "withRssi", source = "entity.rssi")
     @Mapping(target = "withUpc", source = "entity.upc")
     @Mapping(target = "withGtin", source = "entity.gtin")
@@ -72,9 +72,15 @@ public interface EPCReadingMapper {
     @Mapping(target = "withCorrelationId", source = "entity.correlationId")
     EPCReadingResponse toEPCReadingResponse(EPCReadingEntity entity);
 
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "storeId", ignore = true)
     @Mapping(target = "sensorMacAddress", ignore = true)
-    @Mapping(target = "timestamp",  ignore = true)
+    @Mapping(target = "readingTimestamp",  ignore = true)
+    void updateEPCReadingEntity(EPCReadingEntity source, @MappingTarget EPCReadingEntity target);
+
+    @Mapping(target = "storeId", ignore = true)
+    @Mapping(target = "sensorMacAddress", ignore = true)
+    @Mapping(target = "readingTimestamp",  ignore = true)
     @Mapping(target = "correlationId", expression = "java(FrontExecutionContext.getCorrelationId())")
     @Mapping(target = "data", source="reading.data")
     @Mapping(target = "rssi", source="reading.rssi")
@@ -92,7 +98,7 @@ public interface EPCReadingMapper {
                                                                                .withStoreId(reading.getStoreId())
                                                                                .withSensorMacAddress(reading.getMacAddress())
                                                                                .withData(reading.getData())
-                                                                               .withTimestamp(requireNonNullElseGet(reading.getTimestamp(), Instant::now))
+                                                                               .withReadingTimestamp(requireNonNullElseGet(reading.getTimestamp(), Instant::now))
                                                                                .build());
             updateEPCReadingEntity(reading, toSGTIN96(reading), targetEntity);
         }

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 public class SensorDao extends AbstractDao<SensorEntity> {
 
 	public SensorDao() {
-		super(SensorEntity.class, "switch_back_sequence");
+        super(SensorEntity.class, "sensors_sequence");
 	}
 
 //    public SensorEntity getById(final Long id) {

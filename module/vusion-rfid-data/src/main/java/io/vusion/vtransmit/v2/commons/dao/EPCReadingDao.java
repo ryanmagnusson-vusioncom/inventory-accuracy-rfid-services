@@ -16,7 +16,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 public class EPCReadingDao extends AbstractDao<EPCReadingEntity> {
 
 	public EPCReadingDao() {
-		super(EPCReadingEntity.class, "epc_reads_sequence");
+		super(EPCReadingEntity.class, "epc_readings_sequence");
 	}
 
     public Collection<EPCReadingEntity> findByStoreIdMacAddressTimestamp(final String storeId,
@@ -25,7 +25,7 @@ public class EPCReadingDao extends AbstractDao<EPCReadingEntity> {
         return getByQuery("""
                           %1$s.storeId = ?1 \
                           AND %1$s.sensorMacAddress = ?2 \
-                          AND %1$s.timestamp = ?3""".formatted(getTableName()), storeId, macAddress, timestamp);
+                          AND %1$s.readingTimestamp = ?3""".formatted(getTableName()), storeId, macAddress, timestamp);
     }
 
     public EPCReadingEntity findByStoreIdSensorIdDataTimestamp(final String storeId,
@@ -44,7 +44,7 @@ public class EPCReadingDao extends AbstractDao<EPCReadingEntity> {
 	}
 
 	public Collection<EPCReadingEntity> findAllByStoreIdAndTimestampRange(final String storeId, final Instant from, final Instant to) {
-        return getByQuery(String.format("%1$s.storeId = ?1 AND %$1s.timestamp <= ?2 AND %1$s.timestamp >= ?3", getTableName()), storeId, from, to);
+        return getByQuery(String.format("%1$s.storeId = ?1 AND %$1s.readingTimestamp <= ?2 AND %1$s.readingTimestamp >= ?3", getTableName()), storeId, from, to);
     }
 
     public Collection<EPCReadingEntity> findAllByStoreIdAndUPC(final String storeId, final String upc) {

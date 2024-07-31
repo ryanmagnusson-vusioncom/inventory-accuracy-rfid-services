@@ -2,10 +2,12 @@ package io.vusion.rfid.services.service;
 
 import io.vusion.gson.utils.GsonHelper;
 import io.vusion.rfid.data.model.EPCReadingEntity;
+import io.vusion.rfid.domain.model.EPCReading;
 import io.vusion.rfid.domain.model.StoreEPCSensorReading;
 import io.vusion.rfid.services.front.utils.FrontExecutionContext;
 import io.vusion.rfid.services.mapping.EPCReadingMapper;
 import io.vusion.rfid.services.mapping.EPCSensorMapper;
+import io.vusion.secure.logs.VusionLogger;
 import io.vusion.vtransmit.v2.commons.dao.EPCReadingDao;
 import io.vusion.vtransmit.v2.commons.dao.SensorDao;
 import io.vusion.vtransmit.v2.commons.repository.EPCRepository;
@@ -25,9 +27,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,12 +40,15 @@ import static java.util.Comparator.naturalOrder;
 import static java.util.Comparator.nullsLast;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
+import static org.apache.commons.collections4.CollectionUtils.isEmpty;
+import static org.apache.commons.collections4.CollectionUtils.size;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.apache.commons.lang3.StringUtils.stripToNull;
 
 @Service
 @RequiredArgsConstructor
 public class EPCReadingService implements EPCRepository {
-
+    private static final VusionLogger LOGGER = VusionLogger.getLogger(EPCReadingService.class);
     private final EPCReadingMapper epcReadingMapper;
     private final EPCSensorMapper  epcSensorMapper;
     private final SensorDao        sensorDao;
@@ -116,37 +121,58 @@ public class EPCReadingService implements EPCRepository {
                             .toList();
     }
 
-
     @Override
     public void saveAll(Collection<StoreEPCSensorReading> readings) {
-        //final Map<UniqueKey, EPCReadingEntity> entitiesAlreadySaved =
-        final List<EPCReadingEntity> entitiesAlreadySaved =
-                readings.stream()
-                        .map(r -> epcReadingDao.findByStoreIdSensorIdDataTimestamp(r.getStoreId(),
-                                                                                  r.getMacAddress(),
-                                                                                  r.getData(),
-                                                                                  r.getTimestamp()))
-                        .toList();
+        if (isEmpty(readings)) {
+            return;
+        }
 
+        final Collection<EPCReadingEntity> entities = readings.stream()
+                                                              .filter(Objects::nonNull)
+                                                              .map(r -> epcReadingMapper.toEPCReadingEntity(FrontExecutionContext.getCorrelationId(), r))
+                                                              .toList();
+
+        final Collection<EPCReadingEntity> unchangedEntities = new ArrayList<>();
         final Map<UniqueKey, EPCReadingEntity> entitiesAlreadySavedByUniqueKey =
-                        entitiesAlreadySaved.stream()
-                                            .filter(Objects::nonNull)
+                entities.stream()
+                        .filter(r -> isNotBlank(r.getStoreId()) &&
+                                     isNotBlank(r.getSensorMacAddress()) &&
+                                     Objects.nonNull(r.getReadingTimestamp()))
+                        .map(r -> epcReadingDao.findByStoreIdSensorIdDataTimestamp(r.getStoreId(),
+                                                                                   r.getSensorMacAddress(),
+                                                                                   r.getData(),
+                                                                                   r.getReadingTimestamp()))
+                        .filter(Objects::nonNull)
                         .collect(toMap(epcReadingMapper::toEPCReadingEntityUniqueKey,
                                        identity(),
                                        (left,right) -> left,
                                        LinkedHashMap::new));
 
+        final Collection<EPCReadingEntity> entitiesToSave = new ArrayList<>(entities);
 
-        final Collection<EPCReadingEntity> updatesToSave = readings.stream()
-                                                                   .map(r -> Pair.of(epcReadingMapper.toEPCReadingEntityUniqueKey(r), r))
-                                                                   .map(p -> Pair.of(p.getRight(),
-                                                                                     entitiesAlreadySavedByUniqueKey.computeIfAbsent(p.getLeft(),
-                                                                                                                  key -> epcReadingMapper.toEPCReadingEntity(FrontExecutionContext.getCorrelationId(),
-                                                                                                                                                             p.getRight()))))
-                                                                   .map(p -> epcReadingMapper.updateEPCReadingEntity(p.getLeft(), p.getRight()))
-                                                                   .toList();
+        entitiesToSave.removeIf(entity -> {
+            final EPCReadingService.UniqueKey key = epcReadingMapper.toEPCReadingEntityUniqueKey(entity);
+            final EPCReadingEntity savedEntity = entitiesAlreadySavedByUniqueKey.get(key);
+            return savedEntity != null && !Objects.deepEquals(entity, savedEntity);
+        });
 
-        epcReadingDao.saveOrUpdate(updatesToSave);
+
+        final Collection<EPCReadingEntity> updatedEntitiesToSave = entitiesToSave.stream()
+                                                                                 .map(entity -> Pair.of(entity,
+                                                                                                        epcReadingMapper.toEPCReadingEntityUniqueKey(entity)))
+                                                                                 .map(p -> Pair.of(p.getLeft(),
+                                                                                                   entitiesAlreadySavedByUniqueKey.get(p.getRight())))
+                                                                                 .map(p -> {
+                                                                                     if (p.getRight() == null) {
+                                                                                         return p.getLeft();
+                                                                                     }
+                                                                                     epcReadingMapper.updateEPCReadingEntity(p.getLeft(), p.getRight());
+                                                                                     return p.getRight();
+                                                                                 })
+                                                                                 .toList();
+
+        epcReadingDao.saveOrUpdate(updatedEntitiesToSave);
+        LOGGER.info("%d of %d EPCReadingEntity were saved".formatted(size(entities), size(updatedEntitiesToSave)));
     }
 
     @Override
@@ -170,7 +196,7 @@ public class EPCReadingService implements EPCRepository {
     public Collection<StoreEPCSensorReading> findAllByDate(String storeId, LocalDate date) {
         return epcReadingDao.findAllByStoreId(storeId)
                             .stream()
-                            .map(entity -> Pair.of(entity, Optional.ofNullable(entity.getTimestamp())
+                            .map(entity -> Pair.of(entity, Optional.ofNullable(entity.getReadingTimestamp())
                                                                                      .map(ts -> ts.atOffset(ZoneOffset.UTC))
                                                                                      .map(OffsetDateTime::toLocalDate)
                                                                                      .orElse(null)))
@@ -186,11 +212,11 @@ public class EPCReadingService implements EPCRepository {
         return epcReadingDao.findAllByStoreId(storeId)
                             .stream()
                             .filter(entity -> start == null ||
-                                    entity.getTimestamp().equals(start) ||
-                                    entity.getTimestamp().isAfter(start))
+                                              entity.getReadingTimestamp().equals(start) ||
+                                              entity.getReadingTimestamp().isAfter(start))
                             .filter(entity -> end == null ||
-                                    entity.getTimestamp().equals(end) ||
-                                    entity.getTimestamp().isBefore(end))
+                                              entity.getReadingTimestamp().equals(end) ||
+                                              entity.getReadingTimestamp().isBefore(end))
                             .map(epcReadingMapper::toStoreEPCReading)
                             .toList();
 

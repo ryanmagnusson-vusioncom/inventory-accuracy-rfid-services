@@ -1,8 +1,23 @@
 -- Create schema
+EXEC sp_executesql N'CREATE SCHEMA [vtransmitv2]'
 
-CREATE SEQUENCE vtransmitv2_rma.epc_reads_sequence
+
+CREATE SEQUENCE vtransmitv2_rma.epc_readings_sequence
     START WITH 1
     INCREMENT BY 1;
+
+CREATE SEQUENCE vtransmitv2_rma.sensors_sequence
+    START WITH 1
+    INCREMENT BY 1;
+
+CREATE TABLE [vtransmitv2].[vt2_lock]
+(
+    LOCK_KEY     CHAR(256)    NOT NULL,
+    REGION       VARCHAR(128) NOT NULL,
+    CLIENT_ID    CHAR(36),
+    CREATED_DATE datetime     NOT NULL,
+    constraint VT2_LOCK_PK primary key (LOCK_KEY, REGION)
+    );
 
     CREATE TABLE [vtransmitv2_rma].[epc_readings] (
         [id] bigint NOT NULL,
