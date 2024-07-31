@@ -45,7 +45,7 @@ ENV JAVA_OPTIONS="-XX:MaxRAMPercentage=80.0 -XX:+UseG1GC -XX:+UseContainerSuppor
                   -Dsun.stderr.encoding=UTF-8"
 
 RUN mkdir -p $APP_HOME && mkdir -p $SPRING_CONFIG_FILES
-ADD target/vusion-rfid-services.jar ${APP_HOME}/app.jar
+ADD vusion-rfid-services/target/vusion-rfid-services.jar ${APP_HOME}/app.jar
 
 #ADD "${MVN_TARGET_FILE_PATH}" "${JAR_FILE_PATH}"
 #WORKDIR "$APP_HOME"
