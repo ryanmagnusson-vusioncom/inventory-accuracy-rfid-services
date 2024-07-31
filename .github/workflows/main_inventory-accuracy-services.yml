@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_WEBAPP_PACKAGE_PATH: '${{ github.workspace }}/module/vusion-rfid-services.jar'
+  AZURE_WEBAPP_PACKAGE_PATH: '${{ github.workspace }}/module/vusion-rfid-services/target/vusion-rfid-services.jar'
 
 jobs:
   build:
