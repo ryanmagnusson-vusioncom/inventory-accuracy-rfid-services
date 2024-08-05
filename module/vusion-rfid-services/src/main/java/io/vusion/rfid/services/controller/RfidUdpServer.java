@@ -34,7 +34,7 @@ public class RfidUdpServer {
         LOGGER.debug("Received a reading with EPC: %s".formatted(epcData));
         final StoreEPCSensorReading reading = StoreEPCSensorReading.builder()
                                                                    .withStoreId(udpConfig.getDefaultStoreId())
-                                                                   .withMacAddress(udpConfig.getDefaultSensorMac())
+                                                                   .withSensorId(udpConfig.getDefaultSensorMac())
                                                                    .withData(epcData)
                                                                    .withTimestamp(Instant.now())
                                                                    .withRssi(0)
