@@ -17,6 +17,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Service;
 
@@ -46,6 +47,7 @@ import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
+import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.apache.commons.collections4.CollectionUtils.size;
 import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
 import static org.apache.commons.lang3.StringUtils.isBlank;
@@ -96,9 +98,34 @@ public class EPCReadingService implements EPCRepository {
         }
 
         final String correlationId = FrontExecutionContext.getCorrelationId();
-        final List<EPCReadingEntity> entities = readings.stream().map(r -> epcReadingMapper.toEPCReadingEntity(correlationId, r)).toList();
-        final List<EPCReadingEntity.UniqueKey> keys = entities.stream().map(EPCReadingEntity.UniqueKey::wrap).toList();
+        final List<Pair<StoreEPCSensorReading, EPCReadingEntity>> parsedEntities = new ArrayList<>();
+        readings.forEach(rd -> {
+            EPCReadingEntity entity;
+            try {
+                entity = epcReadingMapper.toEPCReadingEntity(correlationId, rd);
+            } catch (Exception e) {
+                LOGGER.error("Failed to parse EPC reading into an EPCReadingEntity: '%s'. %s".formatted(rd, ExceptionUtils.getMessage(e)), e);
+                entity = null;
+            }
+            parsedEntities.add(Pair.of(rd, entity));
+        });
 
+        final List<StoreEPCSensorReading> failedParsings = parsedEntities.stream()
+                                                                         .filter(p -> p.getRight() == null)
+                                                                         .map(Pair::getLeft)
+                                                                         .toList();
+        if (isNotEmpty(failedParsings)) {
+            if (size(failedParsings) == size(readings)) {
+                throw new IllegalArgumentException("Bad request. No readings from %d could be parsed into a supported EPC to save".formatted(size(readings)));
+            }
+            LOGGER.error("%d of %d readings uploaded could not be parsed into a supported EPC to save".formatted(size(failedParsings), size(readings)));
+        }
+
+        final List<EPCReadingEntity> entities = parsedEntities.stream()
+                                                              .filter(p -> p.getRight() != null)
+                                                              .map(Pair::getRight)
+                                                              .toList();
+        final List<EPCReadingEntity.UniqueKey> keys = entities.stream().map(EPCReadingEntity.UniqueKey::wrap).toList();
 
         final Map<EPCReadingEntity.UniqueKey, List<EPCReadingEntity>> entitiesByUniqueIndex = new LinkedHashMap<>();
         keys.forEach(r -> {

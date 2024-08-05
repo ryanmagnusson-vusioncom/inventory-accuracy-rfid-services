@@ -8,16 +8,6 @@ type EPCScan = {
     timestamp: DateTime;
 }
 
-//     constructor(sensorId: string, data: string);
-//     constructor(sensorId: string, data: string, rssi?: string);
-//     constructor(sensorId: string, data: string, rssi = undefined, timestamp = DateTime.now()) {
-//         this.sensorId = sensorId;
-//         this.data = data;
-//         this.rssi = rssi;
-//         this.timestamp = timestamp;
-//     }
-// }
-
 type EPCScanEvent = EPCScan & {
     storeId: string;
     upc: string;

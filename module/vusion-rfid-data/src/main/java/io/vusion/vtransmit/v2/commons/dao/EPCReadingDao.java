@@ -49,5 +49,4 @@ public class EPCReadingDao extends AbstractDao<EPCReadingEntity> {
     public Collection<EPCReadingEntity> findAllByStoreIdAndUPC(final String storeId, final String upc) {
         return getByQuery(String.format("%1$s.storeId = ?1 AND %$1s.upc = ?2", getTableName()), storeId, upc);
     }
-
 }
