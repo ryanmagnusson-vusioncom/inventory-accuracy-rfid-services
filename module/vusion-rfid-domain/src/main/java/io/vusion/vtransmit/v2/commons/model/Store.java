@@ -7,11 +7,13 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
+
 @Getter
 @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder(toBuilder=true, setterPrefix="with", builderClassName = "Builder")
-public class Store {
+public class Store implements Serializable {
 
     protected String storeId;
     private EnumStoreStatus status = EnumStoreStatus.ACTIVE;
