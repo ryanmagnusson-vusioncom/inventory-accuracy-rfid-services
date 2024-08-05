@@ -9,7 +9,7 @@ const STORE_ID_TESTING = 'dallas.showroom';
 
 const STORE_ID = STORE_ID_TESTING;
 const HOST_NAME = HOST_NAME_DEVELOPMENT;
-const UPC_NBR = '4007385009144';
+const UPC_NBR = '0075103888265';
 const SERVICE_PROTOCOL: ServiceProtocol = "http";
 
 const STORE_NAMES: Map<string, string> = new Map();
