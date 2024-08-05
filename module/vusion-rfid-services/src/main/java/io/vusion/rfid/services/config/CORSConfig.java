@@ -51,6 +51,7 @@ public class CORSConfig {
 //
                 registry.addMapping("/epc/stores/**").allowedOriginPatterns("http://localhost:[*]","http://127.0.0.1:[*]","http://172.206.129.70:[*]");
                 registry.addMapping("/inventory/stores/**").allowedOriginPatterns("http://localhost:[*]","http://127.0.0.1:[*]","http://172.206.129.70:[*]");
+                registry.addMapping("/stores/**").allowedOriginPatterns("http://localhost:[*]","http://127.0.0.1:[*]","http://172.206.129.70:[*]");
             }
         };
     }

@@ -1,4 +1,5 @@
 import {DateTime} from 'luxon';
+import {IllegalArgumentException} from "@js-joda/core";
 
 type EPCScan = {
     sensorId: string;
@@ -49,13 +50,13 @@ type SerializedGTIN = SerializedUPC & {
 }
 
 type StoreItemInventory = {
-    storeId: string;
+    store: Store;
     upc: string;
     items: SerializedUPC[];
 }
 
 class SizableStoreItemInventory implements StoreItemInventory {
-    storeId: string;
+    store: Store;
     upc: string;
     items: SerializedUPC[];
 
@@ -65,11 +66,46 @@ class SizableStoreItemInventory implements StoreItemInventory {
 
     constructor(storeId: string, upc: string);
     constructor(storeId: string, upc: string, items: SerializedUPC[]);
-    constructor(storeId: string, upc: string, items: SerializedUPC[] = []) {
-        this.storeId = storeId;
+    constructor(storeId: string, upc: string, items: SerializedUPC[], storeName: string);
+    constructor(storeId: string, upc: string, items: SerializedUPC[] = [], storeName = "") {
+        this.store = { storeId, name: storeName };
         this.upc = upc;
         this.items = items;
     }
+}
+
+type ActiveStoreStatus = 'ACTIVE' | 'active' | 'Active';
+type DisableStoreStatus = 'DISABLE' | 'disable' | 'Disable';
+type StoreStatusString =  ActiveStoreStatus | DisableStoreStatus;
+
+enum StoreStatus {
+    Active,
+    Disable
+}
+
+const getStoreStatusFromString = (text: string) => {
+    if (text === undefined || text === null) {
+        return undefined;
+    }
+
+    const trimmed = text.trim();
+    if (trimmed === '') {
+        return undefined;
+    }
+
+    if (['ACTIVE', 'active', 'Active'].includes(trimmed)) {
+        return StoreStatus.Active;
+    }
+    if (['DISABLE', 'disable', 'Disable'].includes(trimmed)) {
+        return StoreStatus.Disable;
+    }
+    throw new IllegalArgumentException(`No matching StoreStatus found for '${trimmed}'`);
+}
+
+type Store = {
+    storeId: string;
+    name?: string;
+    status?: StoreStatus;
 }
 
 type ItemInventory = {
@@ -112,5 +148,5 @@ const mapScanEventsToItemInventory = (events: EPCScanEvent[]): StoreItemInventor
     return inventories;
 }
 
-export {mapScanEventsToItemInventory, SizableStoreItemInventory};
-export type { ItemInventory, StoreItemInventory, EPCScan, EPCScanEvent, SerializedGTIN, SerializedUPC, ItemInventorySnapshot, MultiItemInventorySnapshot };
+export {mapScanEventsToItemInventory, SizableStoreItemInventory, getStoreStatusFromString};
+export type { Store, ItemInventory, StoreItemInventory, EPCScan, EPCScanEvent, SerializedGTIN, SerializedUPC, ItemInventorySnapshot, MultiItemInventorySnapshot };

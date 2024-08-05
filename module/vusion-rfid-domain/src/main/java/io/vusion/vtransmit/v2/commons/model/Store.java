@@ -7,9 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-//@Entity
-//@Table(name = "[store]")
-//@DynamicUpdate
 @Getter
 @Setter
 @NoArgsConstructor @AllArgsConstructor
@@ -18,6 +15,7 @@ public class Store {
 
     protected String storeId;
     private EnumStoreStatus status = EnumStoreStatus.ACTIVE;
+    private String name;
 
 	public static Store fromId(String storeId) {
         return Store.builder().withStoreId(storeId).build();
