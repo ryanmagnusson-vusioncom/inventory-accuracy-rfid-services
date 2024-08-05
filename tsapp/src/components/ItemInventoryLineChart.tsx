@@ -44,7 +44,7 @@ const fetchSnapshotCounts = async () => {
 
     const url = `${SERVICE_PROTOCOL}://${HOST_NAME}/inventory/stores/${STORE_ID}/upc/${UPC_NBR}/snapshots`;
 
-    console.debug(`Calling item inventory service: ${url}`);
+    console.info(`Calling item inventory service: ${url}`);
     const response = await fetch(url);
     const payload = await response.json();
     let data: ItemInventorySnapshot[] = [];
@@ -145,7 +145,7 @@ const LineChart = () => {
         labels: [],
         datasets: [
             {
-                label: "Users Gained",
+                label: "Inventory Count",
                 data: [],
                 backgroundColor: [],
                 borderColor: "black",
@@ -170,9 +170,9 @@ const LineChart = () => {
     });
 
     const refreshChartData = async () => {
+        console.debug("Refreshing the chart data")
         try {
             const data = await fetchChartData();
-            debugger;
             const maxY = Math.max(...(data.datasets[0].data)) + 2;
             const minYAxisValue = Math.min(...(data.datasets[0].data));
             const minY = minYAxisValue < 1 ? 0 : minYAxisValue - 2;
