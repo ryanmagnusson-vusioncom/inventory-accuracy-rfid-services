@@ -1,7 +1,6 @@
 package io.vusion.rfid.services.front.validator;
 
 import io.vusion.rfid.domain.model.EPCReading;
-import io.vusion.rfid.domain.model.EPCSensor;
 import io.vusion.rfid.domain.model.StoreEPCSensorReading;
 import io.vusion.vtransmit.v2.commons.exceptions.ValidationException;
 import io.vusion.vtransmit.v2.commons.model.Store;
@@ -12,6 +11,9 @@ import java.util.Collection;
 import java.util.Optional;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.strip;
+import static org.apache.commons.lang3.StringUtils.stripToEmpty;
+import static org.apache.commons.lang3.StringUtils.stripToNull;
 
 @Component
 public class EPCReadingRequestValidator extends RequestValidator<EPCReading> {
@@ -22,19 +24,25 @@ public class EPCReadingRequestValidator extends RequestValidator<EPCReading> {
 		return MAXIMUM_DEVICES_FLASHED_BY_REQUEST;
 	}
 
-    public Collection<StoreEPCSensorReading> validate(String storeId, String macAddress, Optional<String> body) {
-        //final Store store = Store.fromId(storeId);
-        //final EPCSensor sensor = EPCSensor.builder().withMacAddress(sensorId).build();
-        final Collection<EPCReading> readings = validate(storeId, body);
+    protected String validateSensorId(String sensorId) {
+        if (isBlank(sensorId)) {
+            throw new ValidationException("SensorId is required");
+        }
+
+        return strip(sensorId).replaceAll("[:\\-\\s]+", "").toUpperCase();
+    }
+
+    public Collection<StoreEPCSensorReading> validate(String storeId, String sensorId, Optional<String> body) {
+        final Collection<EPCReading> readings = validate(stripToEmpty(storeId), body);
         return readings.stream().map(r -> StoreEPCSensorReading.builder()
-                                                               .withStoreId(storeId)
-                                                               .withMacAddress(macAddress)
+                                                               .withStoreId(stripToEmpty(storeId))
+                                                               .withSensorId(validateSensorId(sensorId))
                                                                .withRssi(r.getRssi())
-                                                               .withData(r.getData())
+                                                               .withData(stripToEmpty(r.getData()).toUpperCase())
                                                                .withTimestamp(r.getTimestamp())
                                                                .build())
-                                                         .map(StoreEPCSensorReading.class::cast)
-                                                         .toList();
+                                .map(StoreEPCSensorReading.class::cast)
+                                .toList();
     }
 
 	@Override
@@ -43,7 +51,8 @@ public class EPCReadingRequestValidator extends RequestValidator<EPCReading> {
             throw new ValidationException("Data missing for at store: %s and EPCReading: %s".formatted(store.getStoreId(), request));
         }
 
-        //checkNotTooManyDevices(store, request);
+        request.setData(strip(request.getData()).toUpperCase());
+
 		if (request.getTimestamp() == null) {
 			request.setTimestamp(Instant.now());
 		}

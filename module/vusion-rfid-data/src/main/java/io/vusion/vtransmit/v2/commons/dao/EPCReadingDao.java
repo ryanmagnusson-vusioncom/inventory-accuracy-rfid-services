@@ -2,7 +2,6 @@ package io.vusion.vtransmit.v2.commons.dao;
 
 import java.time.Instant;
 import java.util.Collection;
-import java.util.List;
 
 import io.vusion.dao.AbstractDao;
 import io.vusion.rfid.data.model.EPCReadingEntity;
@@ -19,12 +18,12 @@ public class EPCReadingDao extends AbstractDao<EPCReadingEntity> {
 		super(EPCReadingEntity.class, "epc_readings_sequence");
 	}
 
-    public Collection<EPCReadingEntity> findByStoreIdMacAddressTimestamp(final String storeId,
-                                                                         final String macAddress,
-                                                                         final Instant timestamp) {
+    public Collection<EPCReadingEntity> findByStoreIdSensorIdTimestamp(final String storeId,
+                                                                       final String macAddress,
+                                                                       final Instant timestamp) {
         return getByQuery("""
                           %1$s.storeId = ?1 \
-                          AND %1$s.sensorMacAddress = ?2 \
+                          AND %1$s.sensorId = ?2 \
                           AND %1$s.readingTimestamp = ?3""".formatted(getTableName()), storeId, macAddress, timestamp);
     }
 
@@ -32,7 +31,7 @@ public class EPCReadingDao extends AbstractDao<EPCReadingEntity> {
                                                                final String macAddress,
                                                                final String data,
                                                                final Instant timestamp) {
-        return findByStoreIdMacAddressTimestamp(storeId, macAddress, timestamp)
+        return findByStoreIdSensorIdTimestamp(storeId, macAddress, timestamp)
                        .stream()
                        .filter(entity -> isBlank(data) ? isBlank(entity.getData()) : equalsIgnoreCase(data, entity.getData()))
                        .findFirst()

@@ -6,10 +6,82 @@ POST {{baseUrl}}/epc/stores/{{storeId}}/sensors/{{sensorId}}
 Content-Type: application/json
 
 [{
-    "data":  "30340199D431D203070172B9",
+    "data":  "30340199D431D203070172BC",
     "rssi": -86,
     "timestamp": "2024-07-30T07:24:55Z"
 }]
 
+###
+POST {{baseUrl}}/epc/stores/{{storeId}}/sensors/{{sensorId}}
+Content-Type: application/json
+
+[{
+    "data":  "30340199D431D203070172BC",
+    "rssi": -86,
+    "timestamp": "2024-08-02T06:24:55Z"
+},
+{
+"data":  "30340199D431D203070172B0",
+"rssi": -86,
+"timestamp": "2024-08-02T06:24:55Z"
+},
+{
+"data":  "30340199D431D203070172B9",
+"rssi": -86,
+"timestamp": "2024-08-02T06:24:55Z"
+},
+{
+"data":  "30340452FC036183070172BC",
+"rssi": -101,
+"timestamp": "2024-08-02T06:24:55Z"
+}
+]
 
 
+###
+POST {{baseUrl}}/epc/stores/{{storeId}}/sensors/{{sensorId}}
+Content-Type: application/json
+
+[{
+"data":  "30340199D431D203070172BC",
+"rssi": -86,
+"timestamp": "2024-08-01T06:24:55Z"
+},
+{
+"data":  "30340199D431D203070172BC",
+"rssi": -86,
+"timestamp": "2024-08-01T06:24:55Z"
+},
+{
+"data":  "30340199D431D203070172BC",
+"rssi": -86,
+"timestamp": "2024-08-01T06:24:55Z"
+}]
+
+
+
+###
+GET {{baseUrl}}/epc/stores/{{storeId}}/sensors/{{sensorId}}
+Content-Type: application/json
+
+###
+GET {{baseUrl}}/epc/stores/{{storeId}}
+Content-Type: application/json
+
+###
+GET {{baseUrl}}/epc/stores/{{storeId}}?from=2024-08-01T18:42:00Z&to=2024-08-01T18:44Z
+Content-Type: application/json
+
+###
+GET {{baseUrl}}/epc/stores/{{storeId}}?from=2024-08-01T18:42:00Z
+Content-Type: application/json
+
+
+
+###
+POST {{baseUrl}}/epc/stores/sampling/sensors/{{sensorId}}
+Content-Type: application/json
+
+[
+  { "data":  "30340199D431D203070172BC", "rssi": -86 }
+]

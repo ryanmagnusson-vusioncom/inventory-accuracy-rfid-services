@@ -11,8 +11,11 @@ import lombok.Setter;
 @NoArgsConstructor @AllArgsConstructor
 @Builder(toBuilder = true, setterPrefix = "with", builderClassName = "Builder")
 public class EPCSensor {
+
     private Long id;
     private String macAddress;
+    private String modelId;
+    private String serialNumber;
     private String location;
 
     @Override

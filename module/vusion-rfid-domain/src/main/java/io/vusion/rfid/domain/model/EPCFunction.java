@@ -1,5 +1,7 @@
 package io.vusion.rfid.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 import java.util.stream.Stream;
 
 import static org.apache.commons.lang3.StringUtils.equalsIgnoreCase;
@@ -14,6 +16,7 @@ public enum EPCFunction {
         return Stream.of(EPCFunction.values());
     }
 
+    @JsonCreator
     public static EPCFunction fromString(String text) {
         if (isBlank(text)) {
             return null;

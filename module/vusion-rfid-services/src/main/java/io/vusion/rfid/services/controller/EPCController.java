@@ -34,7 +34,7 @@ import static org.apache.commons.lang3.StringUtils.isBlank;
 
 @RestController
 @MonitoredService
-@HttpExchange(url = "/epc/stores/{storeId}", contentType = MediaType.APPLICATION_JSON_VALUE)
+@HttpExchange(url = "/epc/stores/{storeId}")
 @RequiredArgsConstructor
 @Transactional
 public class EPCController extends BaseController {
@@ -45,13 +45,15 @@ public class EPCController extends BaseController {
 	private final EPCReadingService epcReadingService;
     private final EPCReadingMapper  epcReadingMapper;
 	
-	@PostMapping("sensors/{sensorId}")
+	@PostMapping(path = "sensors/{sensorId}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	@VTransmitContext(priority = EnumPriority.HIGH, eventType = EnumEventType.EPC_SENSOR_READING)
 	public ResponseEntity<?> uploadReadings(@RequestHeader final HttpHeaders headers,
 			                                @PathVariable final String storeId,
                                             @PathVariable final String sensorId,
 			                                @RequestBody final Optional<String> body) {
-		
+
+        LOGGER.info("Received payload for store: '%s' and sensor: '%s': %s".formatted(storeId, sensorId, body.orElse("")));
+
 		final Collection<StoreEPCSensorReading> epcReadings = epcReadingRequestValidator.validate(storeId, sensorId, body);
 		return execute(storeId, "upload epc readings", store -> {
 			epcReadingService.saveAll(epcReadings);
@@ -60,7 +62,7 @@ public class EPCController extends BaseController {
 		});
 	}
 	
-	@GetMapping
+	@GetMapping(path = "readings", produces = MediaType.APPLICATION_JSON_VALUE)
 	@VTransmitContext(priority = EnumPriority.MEDIUM, eventType = EnumEventType.EPC_SENSOR_QUERY)
 	public ResponseEntity<?> getReadings(@RequestHeader final HttpHeaders headers,
                                          @PathVariable final String storeId,
@@ -69,7 +71,7 @@ public class EPCController extends BaseController {
         return getReadings(headers, storeId, null, from, until);
 	}
 
-    @GetMapping("/sensor/{sensorId}")
+    @GetMapping(path = "sensors/{sensorId}/readings", produces = MediaType.APPLICATION_JSON_VALUE)
     @VTransmitContext(priority = EnumPriority.MEDIUM, eventType = EnumEventType.EPC_SENSOR_QUERY)
     public ResponseEntity<?> getReadings(@RequestHeader final HttpHeaders headers,
                                          @PathVariable final String storeId,
@@ -81,7 +83,7 @@ public class EPCController extends BaseController {
         final Instant endingAt = isBlank(until) ? Instant.now() : GsonHelper.toDate(until).toInstant();
 
         return execute(storeId, "retrieve epc readings", store -> {
-            final Collection<StoreEPCSensorReading> readings = epcReadingService.findAllByDateTimeRange(storeId, startingFrom, endingAt);
+            final Collection<StoreEPCSensorReading> readings = epcReadingService.findAllBySensorDateTimeRange(storeId, sensorId, startingFrom, endingAt);
             final Collection<EPCReadingResponse> responses = readings.stream().map(epcReadingMapper::toEPCReadingResponse).toList();
             return ResponseEntity.ok(responses);
         });

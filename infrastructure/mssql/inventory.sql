@@ -23,7 +23,7 @@ CREATE TABLE [vtransmitv2].[vt2_lock]
         [id] bigint NOT NULL,
         [reading_timestamp] [datetime] NOT NULL,
         [store_id] [varchar](255) NOT NULL,
-        [sensor_mac_address] [varchar](30) NOT NULL,
+        [sensor_id] [varchar](30) NOT NULL,
         [correlation_id] [varchar](256) NOT NULL,
         [creation_date] [datetime] NOT NULL,
         [modification_date] [datetime] NOT NULL,
@@ -34,12 +34,12 @@ CREATE TABLE [vtransmitv2].[vt2_lock]
         [epc_serial] [bigint] NULL,
         [epc_rssi] [int] NULL,
         CONSTRAINT [epc_reads_pk] PRIMARY KEY CLUSTERED ([id]),
-        CONSTRAINT [epc_reads_unique_key] UNIQUE (reading_timestamp, store_id, sensor_mac_address, epc_data)
+        CONSTRAINT [epc_reads_unique_key] UNIQUE (reading_timestamp, store_id, sensor_id, epc_data)
     );
 
 CREATE NONCLUSTERED INDEX[epc_reads_idx_item_upc] ON [vtransmitv2_rma].[epc_readings] (item_upc,epc_serial);
 CREATE NONCLUSTERED INDEX[epc_reads_idx_ts] ON [vtransmitv2_rma].[epc_readings] (reading_timestamp,store_id);
-CREATE NONCLUSTERED INDEX[epc_reads_idx_store_sensor] ON [vtransmitv2_rma].[epc_readings] (sensor_mac_address, store_id);
+CREATE NONCLUSTERED INDEX[epc_reads_idx_store_sensor] ON [vtransmitv2_rma].[epc_readings] (sensor_id, store_id);
 CREATE NONCLUSTERED INDEX[epc_reads_idx_store_id] ON [vtransmitv2_rma].[epc_readings] (store_id);
 
 

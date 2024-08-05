@@ -84,6 +84,7 @@
 		<module>vusion-rfid-domain</module>
 		<module>vusion-rfid-services</module>
 		<module>vusion-rfid-data</module>
+                <module>vusion-rfid-sampling</module>
 	</modules>
 
 </project>

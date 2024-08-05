@@ -1,5 +1,6 @@
 package io.vusion.rfid.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import io.vusion.gson.utils.GsonHelper;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
@@ -62,6 +63,7 @@ public enum EPCHeader {
         return fromEPCFunction(EPCFunction.fromString(text));
     }
 
+    @JsonCreator
     public static EPCHeader fromString(String text) {
         if (isBlank(text)) {
             return null;
@@ -73,26 +75,33 @@ public enum EPCHeader {
                                      .findAny()
                                      .orElse(null);
 
-        if (header == null) {
-            final String withoutSpaces = cleanedUp.replaceAll("_", "");
-            if (withoutSpaces.length() > 7 && withoutSpaces.matches("[10]{8}[01]*")) {
-                header = EPCHeader.stream()
-                                  .filter(h -> StringUtils.equals(h.getBinary(), withoutSpaces))
-                                  .findFirst()
-                                  .orElseThrow(() -> new IllegalArgumentException("""
-                                                                                  Text looks like a binary string \
-                                                                                  but a match could be found to: '%s' \
-                                                                                  from: %s""".formatted(
-                                                                                  left(withoutSpaces, 8),
-                                                                                  withoutSpaces)));
-            }
-            if (header == null && withoutSpaces.length() >= 2 &&
-                left(withoutSpaces, 2).matches("[0-9A-F]{2}")) {
-                header = EPCHeader.stream()
-                                  .filter(h -> equalsIgnoreCase(left(withoutSpaces, 2), h.hex))
-                                  .findFirst().orElse(null);
+        if (header != null) {
+            return header;
+        }
+
+        final String withoutSpaces = cleanedUp.replaceAll("_", "");
+        if (withoutSpaces.length() > 7 && withoutSpaces.matches("[10]{8}[01]*")) {
+            header = EPCHeader.stream()
+                              .filter(h -> StringUtils.equals(h.getBinary(), withoutSpaces))
+                              .findFirst()
+                              .orElseThrow(() -> new IllegalArgumentException("""
+                                                                              Text looks like a binary string \
+                                                                              but a match could be found to: '%s' \
+                                                                              from: %s""".formatted(
+                                                                              left(withoutSpaces, 8),
+                                                                              withoutSpaces)));
+            if (header != null) {
+                return header;
             }
         }
+
+        if (withoutSpaces.length() >= 2 &&
+            left(withoutSpaces, 2).matches("[0-9A-F]{2}")) {
+            header = EPCHeader.stream()
+                              .filter(h -> equalsIgnoreCase(left(withoutSpaces, 2), h.hex))
+                              .findFirst().orElse(null);
+        }
+
         if (header == null) {
             throw new IllegalArgumentException("Unable to find a supported header for string: '%s'".formatted(text));
         }

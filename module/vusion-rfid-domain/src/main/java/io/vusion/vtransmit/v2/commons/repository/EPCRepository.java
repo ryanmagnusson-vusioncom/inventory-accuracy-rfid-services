@@ -20,4 +20,8 @@ public interface EPCRepository {
     Collection<StoreEPCSensorReading> findAllByDate(String store, LocalDate date);
 
     Collection<StoreEPCSensorReading> findAllByDateTimeRange(String store, Instant start, Instant end);
+
+    Collection<StoreEPCSensorReading> findAllBySensorDateTimeRange(String store, String sensor, Instant start, Instant end);
+    Collection<StoreEPCSensorReading> findAllByUPCDateTimeRange(String store, String upc, Instant start, Instant end);
+    Collection<StoreEPCSensorReading> findAllBySensorUPCDateTimeRange(String store, String sensor, String upc, Instant start, Instant end);
 }
